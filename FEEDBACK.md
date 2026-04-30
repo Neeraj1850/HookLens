@@ -1,39 +1,44 @@
-# FEEDBACK.md — Uniswap API Builder Experience
+# FEEDBACK.md - Uniswap API Builder Experience
 
-> Required for prize eligibility per the Uniswap Foundation
-> hackathon submission requirements.
+## Project: HookLens - v4 Hook Inspector
 
-## Project: HookLens
-A browser-based Uniswap v4 hook inspector that uses the Uniswap
-Trading API's `hooksOptions` parameter to show developers the
-exact economic impact of any hook on a real swap.
-
-## API Surfaces Used
-- `POST /quote` with `hooksOptions: V4_HOOKS_ONLY`
-- `POST /quote` with `hooksOptions: V4_NO_HOOKS`
-- `POST /quote` with `hooksOptions: V4_HOOKS_INCLUSIVE`
-- `GET /swaps` for transaction status monitoring
-- Uniswap AI `uniswap-hooks` plugin for security guidance
-
----
+## What We Integrated
+- POST /quote with hooksOptions: V4_HOOKS_ONLY
+- POST /quote with hooksOptions: V4_NO_HOOKS
+- POST /quote with hooksOptions: V4_HOOKS_INCLUSIVE
+- protocols: ['V4'] (required when using hooksOptions)
 
 ## What Worked Well
-<!-- Fill in during Phase 2 development -->
+- hooksOptions parameter is powerful and exactly what we needed.
+- autoSlippage: 'DEFAULT' keeps the quote request compact.
+- The documented response fields map cleanly into a UI comparison model.
+- Rate limiting is predictable at 3 req/sec, so a dual quote can be guarded with a simple 400ms delay.
+- API key authentication is simple enough to support both localStorage and Vite env configuration.
 
-## What Didn't Work / Bugs Hit
-<!-- Fill in during Phase 2 development -->
+## Bugs and Friction Encountered
+- The app needed its own dual-quote result type because the API returns two independent failure modes: the hook route can fail while the no-hook route still succeeds.
+- "No quotes available" needs product-specific interpretation for V4_HOOKS_ONLY. In HookLens it often means no hook pool exists for the selected pair, not that the whole simulator failed.
+- BigInt conversion needs careful string handling. Human inputs like "1.0" must be converted to base units without floating point math.
+- Quote output token decimals must be treated defensively in the UI because malformed or partial quote payloads should not crash rendering.
 
 ## Docs Gaps
-<!-- Fill in during Phase 2 development -->
+- hooksOptions is mentioned in the /quote reference but not in the integration guide narrative, making it easy to miss.
+- No examples show hooksOptions in the swapping-code-examples flow.
+- It is unclear in narrative docs that protocols: ['V4'] is required with hooksOptions.
+- No documentation explains what "No quotes available" means specifically for V4_HOOKS_ONLY versus general no-liquidity errors.
 
-## DX Friction Points
-<!-- Fill in during Phase 2 development -->
+## DX Friction
+- The 3 req/sec limit is documented, but dual-quote comparison tools need explicit guidance on serializing quote calls.
+- There is no hook-first quickstart showing the exact V4_HOOKS_ONLY versus V4_NO_HOOKS comparison pattern.
+- Error messages are usable, but a machine-readable no-route/no-hook-pool code would make UI handling more robust than substring matching.
+- The response type is broad enough that frontend apps still need defensive optional fields for gas and routing details.
 
 ## Missing Endpoints / Features Wished For
-<!-- Fill in during Phase 2 development -->
+- An endpoint to list all pools using a specific hook address (currently requires subgraph query).
+- hooksOptions on the /check_approval endpoint would be helpful.
+- A /hook-info endpoint that returns hook metadata given an address.
+- A pool discovery endpoint filtered by chain, token pair, and hook address would make hook simulators much easier to build.
 
-## hooksOptions Field — Specific Feedback
-<!-- This is the core feature we used. Detailed feedback here -->
-
----
-*Updated continuously during development*
+## Rate Limiting Notes
+- 3 req/sec limit means our dual-quote (2 calls) must be spaced 400ms apart to stay safe under any concurrent usage.
+- Wish for a higher free tier limit or a burst allowance for developer tools that need multiple quotes simultaneously.

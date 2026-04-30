@@ -1,5 +1,4 @@
-// Uniswap Trading API types
-// Full implementation in Phase 2
+export const UNISWAP_API_BASE = 'https://trade-api.gateway.uniswap.org/v1'
 
 export type HooksOption =
   | 'V4_HOOKS_INCLUSIVE'
@@ -23,23 +22,64 @@ export interface QuoteRequest {
   amount: string
   type: 'EXACT_INPUT' | 'EXACT_OUTPUT'
   swapper: string
-  slippageTolerance?: number
   autoSlippage?: 'DEFAULT'
+  slippageTolerance?: number
   protocols?: string[]
   hooksOptions?: HooksOption
   routingPreference?: 'BEST_PRICE' | 'FASTEST'
 }
 
+export interface QuoteToken {
+  address: string
+  symbol: string
+  decimals: number
+  chainId: number
+}
+
+export interface QuoteResult {
+  chainId: number
+  input: { amount: string; token: QuoteToken }
+  output: { amount: string; token: QuoteToken }
+  slippage: number
+  priceImpact: number
+  gasFee?: string
+  gasFeeUSD?: string
+  gasFeeQuote?: string
+  route?: unknown[][]
+  portionBips?: number
+  portionAmount?: string
+}
+
 export interface QuoteResponse {
   routing: RoutingType
-  quote: {
-    chainId: number
-    input: { amount: string; token: { address: string; symbol: string } }
-    output: { amount: string; token: { address: string; symbol: string } }
-    slippage: number
-    priceImpact: number
-    gasFee?: string
-  }
+  quote: QuoteResult
   permitData: unknown | null
   txFailureReason?: string
+}
+
+export interface QuoteError {
+  code: string
+  message: string
+  detail?: string
+}
+
+export interface HookQuoteComparison {
+  hookQuote: QuoteResponse | null
+  baseQuote: QuoteResponse | null
+  hookError: QuoteError | null
+  baseError: QuoteError | null
+  noHookPool: boolean
+  impactAmount: string
+  impactPercent: number
+  isPositive: boolean
+  fetchedAt: number
+}
+
+export interface TokenDef {
+  address: string
+  symbol: string
+  decimals: number
+  chainId: number
+  name: string
+  logoChar: string
 }

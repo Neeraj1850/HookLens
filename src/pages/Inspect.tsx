@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { AddressInput } from '../components/hook/AddressInput'
 import { HookInfoPanel } from '../components/hook/HookInfoPanel'
 import { Layout } from '../components/layout/Layout'
+import { ApiKeyPanel } from '../components/settings/ApiKeyPanel'
 import { ErrorState } from '../components/shared/ErrorState'
 import { LoadingDots } from '../components/shared/LoadingDots'
 import { useHookDecoder } from '../hooks/useHookDecoder'
@@ -88,12 +89,19 @@ export function Inspect() {
                 </div>
               </div>
 
-              <div className="bg-surface border border-border rounded-xl p-5 opacity-40">
+              <div className="bg-surface border border-border rounded-xl p-4">
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-2">
-                  Live Swap Quote
+                  How It Works
                 </p>
-                <p className="text-xs text-zinc-700">Uniswap API integration in Phase 2</p>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  The Swap Impact panel calls the Uniswap Trading API twice - once with{' '}
+                  <span className="font-mono text-zinc-400">V4_HOOKS_ONLY</span> and once with{' '}
+                  <span className="font-mono text-zinc-400">V4_NO_HOOKS</span> - and shows the
+                  economic difference. The delta IS what this hook does to a swap.
+                </p>
               </div>
+
+              <ApiKeyPanel />
             </div>
           </div>
         )}
