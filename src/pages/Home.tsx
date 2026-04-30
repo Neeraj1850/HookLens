@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AddressInput } from '../components/hook/AddressInput'
 import { Layout } from '../components/layout/Layout'
+import { ApiKeyPanel } from '../components/settings/ApiKeyPanel'
 import { useHookStore } from '../store/hookStore'
 
 const EXAMPLE_HOOKS = [
@@ -52,6 +53,10 @@ export function Home() {
           </p>
 
           <AddressInput />
+
+          <div className="w-full max-w-2xl mt-8 text-left">
+            <ApiKeyPanel />
+          </div>
 
           <div className="flex items-center gap-3 mt-8 flex-wrap justify-center">
             {[

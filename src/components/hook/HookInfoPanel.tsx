@@ -1,7 +1,7 @@
 import { SUPPORTED_CHAINS } from '../../config/constants'
 import type { FullHookInspection } from '../../types/hook'
 import { Card } from '../shared/Card'
-import { EmptyState } from '../shared/EmptyState'
+import { SafetyPanel } from '../safety/SafetyPanel'
 import { SwapImpactPanel } from '../swap/SwapImpactPanel'
 import { CallbackFlags } from './CallbackFlags'
 import { HookSummary } from './HookSummary'
@@ -36,17 +36,8 @@ export function HookInfoPanel({ inspection }: HookInfoPanelProps) {
         <SwapImpactPanel />
       </Card>
 
-      <Card className="opacity-40">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Safety Analysis</span>
-          <span className="text-[10px] text-zinc-700 border border-zinc-800 px-2 py-0.5 rounded-full">
-            Phase 3
-          </span>
-        </div>
-        <EmptyState
-          title="Contract security checks in Phase 3"
-          description="Will analyze bytecode and source via Sourcify"
-        />
+      <Card>
+        <SafetyPanel />
       </Card>
     </div>
   )

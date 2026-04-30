@@ -4,6 +4,13 @@ export const UNISWAP_SUBGRAPH_V4 =
   'https://gateway.thegraph.com/api/subgraphs/id/...' // filled Phase 4
 
 export const SOURCIFY_API = 'https://sourcify.dev/server'
+export const SOURCIFY_BASE = 'https://sourcify.dev/server'
+export const SOURCIFY_REPO_BASE = 'https://repo.sourcify.dev'
+
+export const SOURCIFY_SUPPORTED_CHAIN_IDS = [
+  1, 10, 56, 100, 130, 137, 324, 1101, 8453, 42161, 42220, 43114, 59144, 81457,
+  11155111, 84532,
+]
 
 export const SUPPORTED_CHAINS = [
   { id: 8453, name: 'Base', shortName: 'base' },

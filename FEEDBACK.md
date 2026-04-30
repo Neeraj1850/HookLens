@@ -42,3 +42,26 @@
 ## Rate Limiting Notes
 - 3 req/sec limit means our dual-quote (2 calls) must be spaced 400ms apart to stay safe under any concurrent usage.
 - Wish for a higher free tier limit or a burst allowance for developer tools that need multiple quotes simultaneously.
+
+## Sourcify Integration Notes (Phase 3)
+
+### What We Used
+- GET /v2/contract/{chainId}/{address}?fields=all
+- Legacy fallback: GET /files/any/{chainId}/{address}
+
+### Sourcify API Experience
+- The v2 `fields=all` shape is convenient because ABI, sources, bytecode, and compiler settings can be pulled in one browser request.
+- 404 is cleanly usable as "not verified" and can be shown as an analysis result rather than treated as an app failure.
+- The legacy files endpoint needs a different parser because it can return either an array of files or an object with a `files` array.
+- Response fields are broad enough that HookLens treats ABI, sources, and bytecode as optional and falls back gracefully.
+
+### Chains Where Source Was Available vs Not
+- Mainnet, Base, Arbitrum, Optimism, and Polygon use standard chain IDs and can be queried directly.
+- Unichain is included in the app UI, but Sourcify coverage may vary by deployment age and repo support.
+- For unverified contracts, HookLens still returns a deterministic report with verification failure and bytecode-only checks when bytecode is available.
+
+### Static Analysis Notes
+- Source-level checks work well for explicit patterns like `selfdestruct`, `delegatecall`, `tx.origin`, callback return types, and visible admin setters.
+- Access control detection is inherently conservative because modifiers and inherited auth helpers vary across projects.
+- Reentrancy and arbitrary external call checks are pattern-based and should be treated as triage signals, not formal verification.
+- Bytecode-only analysis is intentionally minimal; detecting `0xff` can produce false positives because bytecode may contain the byte for reasons other than SELFDESTRUCT.

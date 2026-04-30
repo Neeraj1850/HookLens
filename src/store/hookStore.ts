@@ -8,6 +8,8 @@ interface HookStore {
   currentInspection: FullHookInspection | null
   isDecoding: boolean
   decodeError: string | null
+  isAnalyzing: boolean
+  analysisError: string | null
   history: { address: string; chainId: number; label?: string }[]
   simTokenIn: TokenDef | null
   simTokenOut: TokenDef | null
@@ -20,6 +22,8 @@ interface HookStore {
   setChainId(chainId: number): void
   setDecoding(val: boolean): void
   setDecodeError(err: string | null): void
+  setAnalyzing(val: boolean): void
+  setAnalysisError(err: string | null): void
   setInspection(inspection: FullHookInspection): void
   clearInspection(): void
   addToHistory(address: string, chainId: number): void
@@ -40,6 +44,8 @@ export const useHookStore = create<HookStore>((set, get) => ({
   currentInspection: null,
   isDecoding: false,
   decodeError: null,
+  isAnalyzing: false,
+  analysisError: null,
   history: [],
   simTokenIn: null,
   simTokenOut: null,
@@ -53,6 +59,8 @@ export const useHookStore = create<HookStore>((set, get) => ({
   setChainId: (chainId) => set({ currentChainId: chainId }),
   setDecoding: (val) => set({ isDecoding: val }),
   setDecodeError: (err) => set({ decodeError: err }),
+  setAnalyzing: (val) => set({ isAnalyzing: val }),
+  setAnalysisError: (err) => set({ analysisError: err }),
 
   setInspection: (inspection) =>
     set({
@@ -65,6 +73,7 @@ export const useHookStore = create<HookStore>((set, get) => ({
     set({
       currentInspection: null,
       decodeError: null,
+      analysisError: null,
     }),
 
   addToHistory: (address, chainId) => {

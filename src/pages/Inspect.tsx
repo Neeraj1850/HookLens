@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { AddressInput } from '../components/hook/AddressInput'
 import { HookInfoPanel } from '../components/hook/HookInfoPanel'
 import { Layout } from '../components/layout/Layout'
+import { SafetyScoreBadge } from '../components/safety/SafetyScoreBadge'
 import { ApiKeyPanel } from '../components/settings/ApiKeyPanel'
 import { ErrorState } from '../components/shared/ErrorState'
 import { LoadingDots } from '../components/shared/LoadingDots'
@@ -18,6 +19,7 @@ export function Inspect() {
   const navigate = useNavigate()
   const { decode, isDecoding, decodeError, currentInspection } = useHookDecoder()
   const { setAddress, setChainId } = useHookStore()
+  const safety = currentInspection?.safety
 
   useEffect(() => {
     document.title = address ? `${truncateAddress(address)} - HookLens` : 'HookLens - Inspect'
@@ -75,6 +77,12 @@ export function Inspect() {
                   Quick Stats
                 </p>
                 <div className="flex flex-col gap-3">
+                  {safety && (
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-xs text-zinc-600">Safety Score</span>
+                      <SafetyScoreBadge score={safety.score} size="sm" />
+                    </div>
+                  )}
                   {[
                     ['Active Callbacks', currentInspection.decoded.totalActive.toString()],
                     ['Hook Category', currentInspection.decoded.category],

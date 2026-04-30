@@ -54,19 +54,62 @@ export interface SwapQuote {
   priceImpact: number
 }
 
+export interface VerificationStatus {
+  isVerified: boolean
+  matchType: 'exact_match' | 'match' | 'unverified'
+  verifiedAt?: string
+  sourcifyUrl?: string
+}
+
+export interface ContractSource {
+  verification: VerificationStatus
+  abi?: AbiItem[]
+  sources?: Record<string, { content: string }>
+  deployedBytecode?: string
+  creationBytecode?: string
+  compilerVersion?: string
+}
+
+export interface AbiItem {
+  type: string
+  name?: string
+  inputs?: AbiParam[]
+  outputs?: AbiParam[]
+  stateMutability?: string
+}
+
+export interface AbiParam {
+  name: string
+  type: string
+  internalType?: string
+}
+
 export interface SafetyAnalysis {
   score: number
   checks: SafetyCheck[]
   hasCriticalIssues: boolean
+  hasHighIssues: boolean
+  source: ContractSource
+  analyzedAt: number
 }
 
 export interface SafetyCheck {
   id: string
   name: string
-  passed: boolean
-  severity: 'critical' | 'warning' | 'info'
   description: string
+  passed: boolean
+  severity: 'critical' | 'high' | 'medium' | 'info'
+  detail?: string
+  category: SafetyCategory
 }
+
+export type SafetyCategory =
+  | 'verification'
+  | 'access-control'
+  | 'reentrancy'
+  | 'callback-safety'
+  | 'centralization'
+  | 'hook-specific'
 
 export interface HookPool {
   id: string
