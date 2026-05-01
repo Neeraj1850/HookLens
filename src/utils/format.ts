@@ -12,7 +12,17 @@ export function formatTokenAmount(
   displayDecimals = 4,
 ): string {
   try {
-    const num = Number(BigInt(amount)) / 10 ** decimals
+    if (!amount || amount === '0') return '0.' + '0'.repeat(displayDecimals)
+    // Use BigInt for integer division to preserve full precision, then format
+    const big = BigInt(amount)
+    const divisor = BigInt(10) ** BigInt(decimals)
+    const whole = big / divisor
+    const remainder = big % divisor
+    // Convert remainder to fractional string with correct decimal places
+    const fracStr = remainder.toString().padStart(decimals, '0').slice(0, displayDecimals)
+    const num = parseFloat(`${whole}.${fracStr}`)
+    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(2)}M`
+    if (num >= 1_000) return `${(num / 1_000).toFixed(2)}K`
     return num.toFixed(displayDecimals)
   } catch {
     return '-'

@@ -32,3 +32,7 @@ export function isLikelyHookAddress(address: string): boolean {
     return false
   }
 }
+
+export function copyToClipboard(text: string): Promise<void> {
+  return navigator.clipboard.writeText(text)
+}

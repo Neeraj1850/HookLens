@@ -1,6 +1,7 @@
 import { create } from 'zustand'
-import type { FullHookInspection, PoolDiscovery } from '../types/hook'
+import type { FullHookInspection, HookPool, PoolDiscovery } from '../types/hook'
 import type { HookQuoteComparison, TokenDef } from '../types/uniswap'
+import { poolTokenToTokenDef } from '../utils/token'
 
 interface HookStore {
   currentAddress: string
@@ -13,6 +14,7 @@ interface HookStore {
   history: { address: string; chainId: number; label?: string }[]
   simTokenIn: TokenDef | null
   simTokenOut: TokenDef | null
+  simTokensSource: string | null
   simAmount: string
   simChainId: number
   quoteComparison: HookQuoteComparison | null
@@ -33,6 +35,7 @@ interface HookStore {
   clearHistory(): void
   setSimTokenIn(token: TokenDef | null): void
   setSimTokenOut(token: TokenDef | null): void
+  setSimTokensFromPool(token0: HookPool['token0'], token1: HookPool['token1'], chainId: number): void
   setSimAmount(amount: string): void
   setSimChainId(chainId: number): void
   setQuoteComparison(comparison: HookQuoteComparison | null): void
@@ -55,6 +58,7 @@ export const useHookStore = create<HookStore>((set, get) => ({
   history: [],
   simTokenIn: null,
   simTokenOut: null,
+  simTokensSource: null,
   simAmount: '1',
   simChainId: 8453,
   quoteComparison: null,
@@ -82,6 +86,11 @@ export const useHookStore = create<HookStore>((set, get) => ({
         currentInspection: inspection,
         isDecoding: false,
         decodeError: null,
+        simTokenIn: isNewHook ? null : state.simTokenIn,
+        simTokenOut: isNewHook ? null : state.simTokenOut,
+        simTokensSource: isNewHook ? null : state.simTokensSource,
+        simChainId: inspection.decoded.chainId,
+        quoteComparison: isNewHook ? null : state.quoteComparison,
         poolDiscovery: isNewHook ? null : state.poolDiscovery,
         poolFetchError: isNewHook ? null : state.poolFetchError,
       }
@@ -94,6 +103,8 @@ export const useHookStore = create<HookStore>((set, get) => ({
       analysisError: null,
       poolDiscovery: null,
       poolFetchError: null,
+      simTokensSource: null,
+      quoteComparison: null,
     }),
 
   addToHistory: (address, chainId) => {
@@ -104,10 +115,18 @@ export const useHookStore = create<HookStore>((set, get) => ({
 
   clearHistory: () => set({ history: [] }),
 
-  setSimTokenIn: (token) => set({ simTokenIn: token, quoteComparison: null }),
-  setSimTokenOut: (token) => set({ simTokenOut: token, quoteComparison: null }),
+  setSimTokenIn: (token) => set({ simTokenIn: token, simTokensSource: null, quoteComparison: null }),
+  setSimTokenOut: (token) => set({ simTokenOut: token, simTokensSource: null, quoteComparison: null }),
+  setSimTokensFromPool: (token0, token1, chainId) =>
+    set(() => ({
+      simTokenIn: poolTokenToTokenDef(token0, chainId),
+      simTokenOut: poolTokenToTokenDef(token1, chainId),
+      simChainId: chainId,
+      simTokensSource: `${token0.symbol}/${token1.symbol}`,
+      quoteComparison: null,
+    })),
   setSimAmount: (amount) => set({ simAmount: amount, quoteComparison: null }),
-  setSimChainId: (chainId) => set({ simChainId: chainId }),
+  setSimChainId: (chainId) => set({ simChainId: chainId, simTokensSource: null }),
   setQuoteComparison: (comparison) => set({ quoteComparison: comparison }),
   setFetchingQuotes: (val) => set({ isFetchingQuotes: val }),
   setQuoteError: (err) => set({ quoteError: err }),
@@ -118,6 +137,7 @@ export const useHookStore = create<HookStore>((set, get) => ({
     set((state) => ({
       simTokenIn: state.simTokenOut,
       simTokenOut: state.simTokenIn,
+      simTokensSource: state.simTokensSource,
       quoteComparison: null,
     })),
 }))

@@ -1,17 +1,18 @@
+// The canonical Uniswap Trading API base URL (same value as in types/uniswap.ts — one source of truth)
 export const UNISWAP_API_BASE = 'https://trade-api.gateway.uniswap.org/v1'
 
-export const UNISWAP_SUBGRAPH_V4 =
-  'https://gateway.thegraph.com/api/subgraphs/id/DiYPVdygkfjDWhbxGSqAQxwBKmfKnkWQojqeM2rkLb3G'
-
-export const SOURCIFY_API = 'https://sourcify.dev/server'
+// Sourcify contract verification endpoints
 export const SOURCIFY_BASE = 'https://sourcify.dev/server'
 export const SOURCIFY_REPO_BASE = 'https://repo.sourcify.dev'
 
+// Chain IDs that Sourcify supports for contract verification
 export const SOURCIFY_SUPPORTED_CHAIN_IDS = [
   1, 10, 56, 100, 130, 137, 324, 1101, 8453, 42161, 42220, 43114, 59144, 81457,
   11155111, 84532,
 ]
 
+// Chains supported in the inspector and dashboard UI.
+// Order matters: first chain is the default.
 export const SUPPORTED_CHAINS = [
   { id: 8453, name: 'Base', shortName: 'base' },
   { id: 1, name: 'Ethereum', shortName: 'eth' },
@@ -21,6 +22,20 @@ export const SUPPORTED_CHAINS = [
   { id: 130, name: 'Unichain', shortName: 'unichain' },
 ] as const
 
+// Uniswap v4 subgraph IDs from The Graph (one per chain).
+// Use VITE_THEGRAPH_API_KEY in .env to authenticate against gateway.thegraph.com.
+// To add more chains: find the subgraph at https://thegraph.com/explorer/ and verify it
+// exposes: pools { id, hooks, feeTier, txCount, volumeUSD, liquidity, token0{symbol}, token1{symbol} }
+export const UNISWAP_V4_SUBGRAPH_IDS_BY_CHAIN: Record<number, string> = {
+  // Ethereum Mainnet — verified ✓
+  1: 'DiYPVdygkfjDWhbxGSqAQxwBKmfKnkWQojqeM2rkLb3G',
+  // Base — verified ✓ (has 451K+ txns on hook pools as of May 2025)
+  8453: 'G5TsTKNi8yhPSV7kycaE23oWbqv9zzNqR49FoEQjzq1r',
+  // Arbitrum, Optimism, Polygon — add verified subgraph IDs here when available
+  // Find them at: https://thegraph.com/explorer/ → search "uniswap v4"
+}
+
+// Default swap simulation token pair (Base network)
 export const DEFAULT_TOKEN_IN = {
   address: '0x0000000000000000000000000000000000000000',
   symbol: 'ETH',
@@ -35,8 +50,10 @@ export const DEFAULT_TOKEN_OUT = {
   chainId: 8453,
 }
 
+// The 14 Uniswap v4 hook permission bits, extracted from the lower 14 bits of the hook address.
 export const HOOK_FLAG_MASK = BigInt(0x3FFF)
 
+// Human-readable descriptions for each hook callback, shown in the inspector UI.
 export const CALLBACK_DESCRIPTIONS: Record<string, string> = {
   beforeInitialize:
     'Runs before a new pool is created. Used to validate pool params or set initial state.',

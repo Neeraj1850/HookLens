@@ -17,13 +17,13 @@ export function Header() {
         <nav className="flex items-center gap-1">
           {[
             { path: '/', label: 'Inspect' },
-            { path: '/about', label: 'About' },
+            { path: '/dashboard', label: 'Dashboard' },
           ].map(({ path, label }) => (
             <Link
               key={path}
               to={path}
               className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                pathname === path
+                pathname === path || (path === '/' && pathname.startsWith('/inspect'))
                   ? 'bg-white/10 text-white'
                   : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
               }`}

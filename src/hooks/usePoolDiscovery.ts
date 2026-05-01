@@ -11,6 +11,7 @@ export function usePoolDiscovery() {
     setPoolDiscovery,
     setFetchingPools,
     setPoolFetchError,
+    setSimTokensFromPool,
   } = useHookStore()
 
   const fetchPools = useCallback(async () => {
@@ -25,6 +26,13 @@ export function usePoolDiscovery() {
         currentInspection.decoded.chainId,
       )
       setPoolDiscovery(result)
+      if (result.pools[0]) {
+        setSimTokensFromPool(
+          result.pools[0].token0,
+          result.pools[0].token1,
+          result.pools[0].chainId,
+        )
+      }
       if (result.error) setPoolFetchError(result.error)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Pool lookup failed'
@@ -38,6 +46,7 @@ export function usePoolDiscovery() {
     setFetchingPools,
     setPoolFetchError,
     setPoolDiscovery,
+    setSimTokensFromPool,
   ])
 
   return {

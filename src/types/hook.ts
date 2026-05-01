@@ -113,6 +113,7 @@ export type SafetyCategory =
 
 export interface HookPool {
   id: string
+  chainId: number
   token0: { id: string; symbol: string; decimals: number }
   token1: { id: string; symbol: string; decimals: number }
   feeTier: number
@@ -132,6 +133,16 @@ export interface PoolDiscovery {
   fetchedAt: number
 }
 
+export interface PoolMarketComparison {
+  hookPools: HookPool[]
+  noHookPools: HookPool[]
+  totalHookPools: number
+  totalNoHookPools: number
+  source: 'subgraph' | 'none'
+  error?: string
+  fetchedAt: number
+}
+
 export interface CheckExplanation {
   checkId: string
   title: string
@@ -139,6 +150,29 @@ export interface CheckExplanation {
   example: string
   mitigation: string
   reference?: string
+}
+
+export interface HookAddressCandidate {
+  address: string
+  chainId: number
+  chainName: string
+  poolCount: number
+  txCount: number
+  volumeUSD: number
+  liquidity: string
+  topPair: string
+  topFeeTier: number
+  source: 'subgraph' | 'curated'
+  description: string
+}
+
+export interface HookAddressDiscovery {
+  hooks: HookAddressCandidate[]
+  totalFound: number
+  chainsQueried: number
+  source: 'subgraph' | 'curated' | 'none'
+  errors: { chainId: number; message: string }[]
+  fetchedAt: number
 }
 
 export interface FullHookInspection {

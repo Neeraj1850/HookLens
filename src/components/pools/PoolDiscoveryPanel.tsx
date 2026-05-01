@@ -1,10 +1,12 @@
 import { usePoolDiscovery } from '../../hooks/usePoolDiscovery'
+import { useHookStore } from '../../store/hookStore'
 import { EmptyState } from '../shared/EmptyState'
 import { LoadingSkeleton } from '../shared/LoadingSkeleton'
 import { PoolCard } from './PoolCard'
 
 export function PoolDiscoveryPanel() {
   const { poolDiscovery, isFetchingPools, poolFetchError, fetchPools } = usePoolDiscovery()
+  const chainId = useHookStore((state) => state.currentInspection?.decoded.chainId ?? 8453)
 
   return (
     <div className="flex flex-col gap-4">
@@ -14,7 +16,7 @@ export function PoolDiscoveryPanel() {
             Pools Using This Hook
           </span>
           <p className="text-xs text-zinc-500">
-            Via Uniswap v4 subgraph | onchain fallback
+            Find pools first, then expand a pool row to run live swap impact
           </p>
         </div>
         {!poolDiscovery && (
@@ -82,7 +84,7 @@ export function PoolDiscoveryPanel() {
           ) : (
             <div>
               {poolDiscovery.pools.map((pool) => (
-                <PoolCard key={pool.id} pool={pool} />
+                <PoolCard key={pool.id} pool={pool} chainId={chainId} />
               ))}
             </div>
           )}

@@ -7,6 +7,7 @@ export function useSwapSimulator() {
   const {
     simTokenIn,
     simTokenOut,
+    simTokensSource,
     simAmount,
     simChainId,
     quoteComparison,
@@ -85,6 +86,7 @@ export function useSwapSimulator() {
     amount: simAmount,
     chainId: simChainId,
     comparison: quoteComparison,
+    tokensSource: simTokensSource,
     isLoading: isFetchingQuotes,
     error: quoteError,
     fetchQuotes,

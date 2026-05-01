@@ -10,6 +10,19 @@ interface QuoteRowProps {
   highlight?: boolean
 }
 
+function formatQuoteError(error: QuoteError): string {
+  const lower = error.message.toLowerCase()
+  if (
+    lower.includes('no quotes') ||
+    lower.includes('no quote') ||
+    lower.includes('no route') ||
+    lower.includes('insufficient liquidity')
+  ) {
+    return 'No route found'
+  }
+  return error.message
+}
+
 export function QuoteRow({ label, quote, error, isLoading, highlight }: QuoteRowProps) {
   const outputDecimals = quote?.quote.output.token.decimals ?? 18
   const displayDecimals = outputDecimals <= 6 ? 2 : 4
@@ -38,12 +51,16 @@ export function QuoteRow({ label, quote, error, isLoading, highlight }: QuoteRow
       <div className="flex flex-col items-end gap-0.5">
         {isLoading && <LoadingDots size="sm" />}
         {!isLoading && error && (
-          <span className="text-xs text-zinc-600">
-            {error.message.toLowerCase().includes('no quotes') ||
-            error.message.toLowerCase().includes('no route')
-              ? 'No pool found'
-              : 'Quote unavailable'}
-          </span>
+          <>
+            <span className="text-xs text-zinc-500 text-right max-w-[15rem]">
+              {formatQuoteError(error)}
+            </span>
+            {error.detail && (
+              <span className="text-[10px] text-zinc-700 text-right max-w-[18rem] truncate">
+                {error.detail}
+              </span>
+            )}
+          </>
         )}
         {!isLoading && quote && (
           <>

@@ -1,18 +1,21 @@
-import { getAddress, isAddress } from 'viem'
-import type { HookPool, PoolDiscovery } from '../types/hook'
+import { decodeEventLog, getAddress, isAddress, parseAbiItem, type Hex } from 'viem'
+import { UNISWAP_V4_SUBGRAPH_IDS_BY_CHAIN } from '../config/constants'
+import type { HookPool, PoolDiscovery, PoolMarketComparison } from '../types/hook'
 
 const POOL_MANAGER = '0x000000000004444c5dc75cb358380d2e3de08a90'
-const V4_SUBGRAPH_ID = 'DiYPVdygkfjDWhbxGSqAQxwBKmfKnkWQojqeM2rkLb3G'
-const V4_SUBGRAPH_ENDPOINT = `https://gateway.thegraph.com/api/subgraphs/id/${V4_SUBGRAPH_ID}`
 const INITIALIZE_TOPIC =
   '0x91ccaa7a278130b65168c3a0c8d3bcae84cf5e43704342bd3ec0b59e59c036db'
+const INITIALIZE_EVENT = parseAbiItem(
+  'event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)',
+)
+const NATIVE_CURRENCY = '0x0000000000000000000000000000000000000000'
 
 const POOLS_BY_HOOK_QUERY = `
   query PoolsByHook($hook: String!, $skip: Int!) {
     pools(
       first: 20
       skip: $skip
-      where: { hook: $hook }
+      where: { hooks: $hook }
       orderBy: liquidity
       orderDirection: desc
     ) {
@@ -24,7 +27,57 @@ const POOLS_BY_HOOK_QUERY = `
       feeTier
       volumeUSD
       txCount
-      hook
+      hooks
+    }
+  }
+`
+
+const POOL_MARKET_COMPARISON_QUERY = `
+  query PoolMarketComparison(
+    $token0: String!
+    $token1: String!
+    $hook: String!
+    $zeroHook: String!
+  ) {
+    hookPools: pools(
+      first: 10
+      where: {
+        token0: $token0
+        token1: $token1
+        hooks: $hook
+      }
+      orderBy: liquidity
+      orderDirection: desc
+    ) {
+      id
+      liquidity
+      sqrtPrice
+      token0 { id symbol decimals }
+      token1 { id symbol decimals }
+      feeTier
+      volumeUSD
+      txCount
+      hooks
+    }
+    noHookPools: pools(
+      first: 10
+      where: {
+        token0: $token0
+        token1: $token1
+        hooks: $zeroHook
+      }
+      orderBy: liquidity
+      orderDirection: desc
+    ) {
+      id
+      liquidity
+      sqrtPrice
+      token0 { id symbol decimals }
+      token1 { id symbol decimals }
+      feeTier
+      volumeUSD
+      txCount
+      hooks
     }
   }
 `
@@ -35,12 +88,20 @@ interface RpcLog {
   transactionHash?: string
 }
 
-async function fetchPoolsFromSubgraph(hookAddress: string): Promise<HookPool[]> {
-  const apiKey =
-    getStorageValue('hooklens_thegraph_key') ?? import.meta.env.VITE_THEGRAPH_API_KEY
-  const endpoint = apiKey
-    ? `https://gateway.thegraph.com/api/${apiKey}/subgraphs/id/${V4_SUBGRAPH_ID}`
-    : V4_SUBGRAPH_ENDPOINT
+async function fetchPoolsFromSubgraph(
+  hookAddress: string,
+  chainId: number,
+): Promise<HookPool[]> {
+  const subgraphId = UNISWAP_V4_SUBGRAPH_IDS_BY_CHAIN[chainId]
+  if (!subgraphId) throw new Error(`No v4 subgraph configured for chain ${chainId}`)
+
+  const endpoint = getGraphEndpoint(subgraphId)
+  debugSubgraph('PoolsByHook request', {
+    chainId,
+    subgraphId,
+    endpoint: maskGraphEndpoint(endpoint),
+    hook: hookAddress.toLowerCase(),
+  })
 
   const res = await fetch(endpoint, {
     method: 'POST',
@@ -60,28 +121,38 @@ async function fetchPoolsFromSubgraph(hookAddress: string): Promise<HookPool[]> 
     data?: { pools?: Record<string, unknown>[] }
     errors?: { message?: string }[]
   }
+  debugSubgraph('PoolsByHook raw JSON', { chainId, json })
 
   if (json.errors?.length) {
+    debugSubgraph('PoolsByHook GraphQL errors', json.errors)
     throw new Error(json.errors[0]?.message ?? 'GraphQL error')
   }
 
-  return (json.data?.pools ?? []).map(mapSubgraphPool)
+  const pools = json.data?.pools ?? []
+  debugSubgraph('PoolsByHook response sample', {
+    chainId,
+    count: pools.length,
+    sample: pools.slice(0, 3),
+  })
+
+  return pools.map((pool) => mapSubgraphPool(pool, chainId))
 }
 
-function mapSubgraphPool(p: Record<string, unknown>): HookPool {
+function mapSubgraphPool(p: Record<string, unknown>, chainId: number): HookPool {
   const t0 = p.token0 as Record<string, unknown> | undefined
   const t1 = p.token1 as Record<string, unknown> | undefined
 
   return {
     id: String(p.id ?? ''),
+    chainId,
     token0: {
       id: String(t0?.id ?? ''),
-      symbol: String(t0?.symbol ?? '???'),
+      symbol: normalizeTokenSymbol(String(t0?.id ?? ''), String(t0?.symbol ?? '???')),
       decimals: Number(t0?.decimals ?? 18),
     },
     token1: {
       id: String(t1?.id ?? ''),
-      symbol: String(t1?.symbol ?? '???'),
+      symbol: normalizeTokenSymbol(String(t1?.id ?? ''), String(t1?.symbol ?? '???')),
       decimals: Number(t1?.decimals ?? 18),
     },
     feeTier: Number(p.feeTier ?? 0),
@@ -89,9 +160,16 @@ function mapSubgraphPool(p: Record<string, unknown>): HookPool {
     liquidityUSD: 0,
     volumeUSD: String(p.volumeUSD ?? '0'),
     txCount: Number(p.txCount ?? 0),
-    hook: String(p.hook ?? ''),
+    hook: normalizeSubgraphHook(p.hooks ?? p.hook),
     source: 'subgraph',
   }
+}
+
+function normalizeSubgraphHook(hook: unknown): string {
+  if (typeof hook !== 'string') return ''
+  const lower = hook.toLowerCase()
+  if (!isAddress(lower)) return hook
+  return getAddress(lower)
 }
 
 async function fetchPoolsOnchain(hookAddress: string, chainId: number): Promise<HookPool[]> {
@@ -129,7 +207,7 @@ async function fetchPoolsOnchain(hookAddress: string, chainId: number): Promise<
   const hookLower = hookAddress.toLowerCase()
 
   for (const log of logsJson.result ?? []) {
-    const pool = mapInitializeLog(log, hookLower)
+    const pool = mapInitializeLog(log, hookLower, chainId)
     if (pool) pools.push(pool)
   }
 
@@ -147,36 +225,58 @@ async function rpcRequest<T>(rpcUrl: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>
 }
 
-function mapInitializeLog(log: RpcLog, hookLower: string): HookPool | null {
-  const data = log.data?.startsWith('0x') ? log.data.slice(2) : (log.data ?? '')
-  if (data.length < 448) return null
+function mapInitializeLog(log: RpcLog, hookLower: string, chainId: number): HookPool | null {
+  if (!log.data || !log.topics || log.topics.length < 4) return null
 
-  const hookFromLog = `0x${data.slice(256 + 24, 256 + 64)}`
-  if (hookFromLog.toLowerCase() !== hookLower) return null
+  try {
+    const decoded = decodeEventLog({
+      abi: [INITIALIZE_EVENT],
+      data: log.data as Hex,
+      topics: log.topics as [Hex, ...Hex[]],
+    })
 
-  const currency0 = `0x${data.slice(24, 64)}`
-  const currency1 = `0x${data.slice(64 + 24, 64 + 64)}`
-  const fee = parseInt(data.slice(128, 192), 16)
+    const args = decoded.args
+    const hookFromLog = getAddress(args.hooks)
+    if (hookFromLog.toLowerCase() !== hookLower) return null
 
-  return {
-    id: log.topics?.[1] ?? log.transactionHash ?? 'unknown',
-    token0: { id: currency0, symbol: '???', decimals: 18 },
-    token1: { id: currency1, symbol: '???', decimals: 18 },
-    feeTier: Number.isFinite(fee) ? fee : 0,
-    liquidity: '0',
-    liquidityUSD: 0,
-    volumeUSD: '0',
-    txCount: 0,
-    hook: hookFromLog,
-    source: 'onchain',
+    const currency0 = getAddress(args.currency0)
+    const currency1 = getAddress(args.currency1)
+    const fee = Number(args.fee)
+
+    return {
+      id: args.id ?? log.transactionHash ?? 'unknown',
+      chainId,
+      token0: {
+        id: currency0,
+        symbol: normalizeTokenSymbol(currency0, '???'),
+        decimals: 18,
+      },
+      token1: {
+        id: currency1,
+        symbol: normalizeTokenSymbol(currency1, '???'),
+        decimals: 18,
+      },
+      feeTier: Number.isFinite(fee) ? fee : 0,
+      liquidity: '0',
+      liquidityUSD: 0,
+      volumeUSD: '0',
+      txCount: 0,
+      hook: hookFromLog,
+      source: 'onchain',
+    }
+  } catch {
+    return null
   }
 }
 
+function normalizeTokenSymbol(address: string, symbol: string): string {
+  return address.toLowerCase() === NATIVE_CURRENCY ? 'ETH' : symbol
+}
+
 function getRpcUrl(chainId: number): string {
-  const alchemyKey =
-    getStorageValue('hooklens_alchemy_key') ??
-    import.meta.env.VITE_ALCHEMY_API_KEY ??
-    import.meta.env.VITE_RPC_BASE
+  const alchemyKey = String(
+    import.meta.env.VITE_ALCHEMY_API_KEY ?? import.meta.env.VITE_RPC_BASE ?? '',
+  ).trim()
 
   const rpcs: Record<number, string> = {
     8453: alchemyKey
@@ -193,10 +293,28 @@ function getRpcUrl(chainId: number): string {
   return rpcs[chainId] ?? rpcs[8453]
 }
 
-function getStorageValue(key: string): string | null {
-  if (typeof localStorage === 'undefined') return null
-  const value = localStorage.getItem(key)
-  return value?.trim() || null
+function getGraphEndpoint(subgraphId: string): string {
+  const apiKey = String(import.meta.env.VITE_THEGRAPH_API_KEY ?? '').trim()
+  if (!apiKey) {
+    throw new Error(
+      'VITE_THEGRAPH_API_KEY is not set. Add it to your .env file to query the subgraph.',
+    )
+  }
+  return `https://gateway.thegraph.com/api/${apiKey}/subgraphs/id/${subgraphId}`
+}
+
+function debugSubgraph(label: string, payload: unknown): void {
+  if (
+    import.meta.env.DEV !== true &&
+    import.meta.env.VITE_HOOKLENS_DEBUG_SUBGRAPH !== 'true'
+  ) {
+    return
+  }
+  console.info(`[HookLens subgraph] ${label}`, payload)
+}
+
+function maskGraphEndpoint(endpoint: string): string {
+  return endpoint.replace(/\/api\/[^/]+\/subgraphs\//, '/api/<key>/subgraphs/')
 }
 
 export async function discoverPools(
@@ -216,7 +334,7 @@ export async function discoverPools(
   const checksummed = getAddress(hookAddress)
 
   try {
-    const pools = await fetchPoolsFromSubgraph(checksummed)
+    const pools = await fetchPoolsFromSubgraph(checksummed, chainId)
     return {
       pools,
       totalFound: pools.length,
@@ -243,6 +361,87 @@ export async function discoverPools(
       error:
         'Both subgraph and onchain lookup failed: ' +
         (onchainErr instanceof Error ? onchainErr.message : 'unknown'),
+      fetchedAt: Date.now(),
+    }
+  }
+}
+
+export async function comparePoolMarket(
+  pool: HookPool,
+  chainId: number,
+): Promise<PoolMarketComparison> {
+  const subgraphId = UNISWAP_V4_SUBGRAPH_IDS_BY_CHAIN[chainId]
+  if (!subgraphId) {
+    return {
+      hookPools: [pool],
+      noHookPools: [],
+      totalHookPools: 1,
+      totalNoHookPools: 0,
+      source: 'none',
+      error: `No v4 subgraph configured for chain ${chainId}`,
+      fetchedAt: Date.now(),
+    }
+  }
+
+  const endpoint = getGraphEndpoint(subgraphId)
+  const variables = {
+    token0: pool.token0.id.toLowerCase(),
+    token1: pool.token1.id.toLowerCase(),
+    hook: pool.hook.toLowerCase(),
+    zeroHook: NATIVE_CURRENCY,
+  }
+
+  debugSubgraph('PoolMarketComparison request', {
+    chainId,
+    subgraphId,
+    endpoint: maskGraphEndpoint(endpoint),
+    variables,
+  })
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: POOL_MARKET_COMPARISON_QUERY,
+        variables,
+      }),
+    })
+
+    if (!res.ok) throw new Error(`Subgraph error ${res.status}`)
+
+    const json = (await res.json()) as {
+      data?: {
+        hookPools?: Record<string, unknown>[]
+        noHookPools?: Record<string, unknown>[]
+      }
+      errors?: { message?: string }[]
+    }
+    debugSubgraph('PoolMarketComparison raw JSON', { chainId, json })
+
+    if (json.errors?.length) {
+      throw new Error(json.errors[0]?.message ?? 'GraphQL error')
+    }
+
+    const hookPools = (json.data?.hookPools ?? []).map((item) => mapSubgraphPool(item, chainId))
+    const noHookPools = (json.data?.noHookPools ?? []).map((item) => mapSubgraphPool(item, chainId))
+
+    return {
+      hookPools,
+      noHookPools,
+      totalHookPools: hookPools.length,
+      totalNoHookPools: noHookPools.length,
+      source: 'subgraph',
+      fetchedAt: Date.now(),
+    }
+  } catch (err) {
+    return {
+      hookPools: [pool],
+      noHookPools: [],
+      totalHookPools: 1,
+      totalNoHookPools: 0,
+      source: 'none',
+      error: err instanceof Error ? err.message : 'Pool market comparison failed',
       fetchedAt: Date.now(),
     }
   }
