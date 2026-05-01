@@ -25,7 +25,7 @@ export function Home() {
   const { history, setAddress, setChainId } = useHookStore()
 
   useEffect(() => {
-    document.title = 'HookLens - Uniswap v4 Hook Inspector'
+    document.title = 'HookLens — Uniswap v4 Hook Inspector'
   }, [])
 
   const handleAddressClick = (address: string, chainId: number) => {

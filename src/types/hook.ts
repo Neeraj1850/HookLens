@@ -113,11 +113,32 @@ export type SafetyCategory =
 
 export interface HookPool {
   id: string
-  token0: { symbol: string; address: string }
-  token1: { symbol: string; address: string }
-  liquidity: string
-  volumeUSD: string
+  token0: { id: string; symbol: string; decimals: number }
+  token1: { id: string; symbol: string; decimals: number }
   feeTier: number
+  liquidity: string
+  liquidityUSD: number
+  volumeUSD: string
+  txCount: number
+  hook: string
+  source: 'subgraph' | 'onchain'
+}
+
+export interface PoolDiscovery {
+  pools: HookPool[]
+  totalFound: number
+  source: 'subgraph' | 'onchain' | 'none'
+  error?: string
+  fetchedAt: number
+}
+
+export interface CheckExplanation {
+  checkId: string
+  title: string
+  why: string
+  example: string
+  mitigation: string
+  reference?: string
 }
 
 export interface FullHookInspection {

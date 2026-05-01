@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { FullHookInspection } from '../types/hook'
+import type { FullHookInspection, PoolDiscovery } from '../types/hook'
 import type { HookQuoteComparison, TokenDef } from '../types/uniswap'
 
 interface HookStore {
@@ -18,6 +18,9 @@ interface HookStore {
   quoteComparison: HookQuoteComparison | null
   isFetchingQuotes: boolean
   quoteError: string | null
+  poolDiscovery: PoolDiscovery | null
+  isFetchingPools: boolean
+  poolFetchError: string | null
   setAddress(address: string): void
   setChainId(chainId: number): void
   setDecoding(val: boolean): void
@@ -35,6 +38,9 @@ interface HookStore {
   setQuoteComparison(comparison: HookQuoteComparison | null): void
   setFetchingQuotes(val: boolean): void
   setQuoteError(err: string | null): void
+  setPoolDiscovery(discovery: PoolDiscovery | null): void
+  setFetchingPools(val: boolean): void
+  setPoolFetchError(err: string | null): void
   swapTokens(): void
 }
 
@@ -54,6 +60,9 @@ export const useHookStore = create<HookStore>((set, get) => ({
   quoteComparison: null,
   isFetchingQuotes: false,
   quoteError: null,
+  poolDiscovery: null,
+  isFetchingPools: false,
+  poolFetchError: null,
 
   setAddress: (address) => set({ currentAddress: address }),
   setChainId: (chainId) => set({ currentChainId: chainId }),
@@ -63,10 +72,19 @@ export const useHookStore = create<HookStore>((set, get) => ({
   setAnalysisError: (err) => set({ analysisError: err }),
 
   setInspection: (inspection) =>
-    set({
-      currentInspection: inspection,
-      isDecoding: false,
-      decodeError: null,
+    set((state) => {
+      const isNewHook =
+        state.currentInspection?.decoded.address.toLowerCase() !==
+          inspection.decoded.address.toLowerCase() ||
+        state.currentInspection?.decoded.chainId !== inspection.decoded.chainId
+
+      return {
+        currentInspection: inspection,
+        isDecoding: false,
+        decodeError: null,
+        poolDiscovery: isNewHook ? null : state.poolDiscovery,
+        poolFetchError: isNewHook ? null : state.poolFetchError,
+      }
     }),
 
   clearInspection: () =>
@@ -74,6 +92,8 @@ export const useHookStore = create<HookStore>((set, get) => ({
       currentInspection: null,
       decodeError: null,
       analysisError: null,
+      poolDiscovery: null,
+      poolFetchError: null,
     }),
 
   addToHistory: (address, chainId) => {
@@ -91,6 +111,9 @@ export const useHookStore = create<HookStore>((set, get) => ({
   setQuoteComparison: (comparison) => set({ quoteComparison: comparison }),
   setFetchingQuotes: (val) => set({ isFetchingQuotes: val }),
   setQuoteError: (err) => set({ quoteError: err }),
+  setPoolDiscovery: (discovery) => set({ poolDiscovery: discovery }),
+  setFetchingPools: (val) => set({ isFetchingPools: val }),
+  setPoolFetchError: (err) => set({ poolFetchError: err }),
   swapTokens: () =>
     set((state) => ({
       simTokenIn: state.simTokenOut,

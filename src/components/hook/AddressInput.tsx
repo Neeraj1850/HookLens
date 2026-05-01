@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SUPPORTED_CHAINS } from '../../config/constants'
 import { useHookStore } from '../../store/hookStore'
@@ -7,34 +7,27 @@ import { isLikelyHookAddress, validateHookAddress } from '../../utils/address'
 export function AddressInput() {
   const navigate = useNavigate()
   const { currentAddress, currentChainId, setAddress, setChainId } = useHookStore()
-  const [input, setInput] = useState(currentAddress)
-  const [error, setError] = useState('')
-  const [isHookLike, setIsHookLike] = useState(false)
+  const input = currentAddress
 
-  useEffect(() => {
-    setInput(currentAddress)
-  }, [currentAddress])
+  const validation = useMemo(() => {
+    if (input.length !== 42) return { error: '', isHookLike: false }
 
-  useEffect(() => {
-    if (input.length === 42) {
-      const result = validateHookAddress(input)
-      if (result.valid && result.checksummed) {
-        setError('')
-        setIsHookLike(isLikelyHookAddress(result.checksummed))
-      } else {
-        setError(result.error ?? '')
-        setIsHookLike(false)
-      }
-    } else {
-      setError('')
-      setIsHookLike(false)
+    const result = validateHookAddress(input)
+    if (!result.valid || !result.checksummed) {
+      return { error: result.error ?? '', isHookLike: false }
+    }
+
+    return {
+      error: '',
+      isHookLike: isLikelyHookAddress(result.checksummed),
     }
   }, [input])
+
+  const { error, isHookLike } = validation
 
   const handleSubmit = useCallback(() => {
     const result = validateHookAddress(input)
     if (!result.valid || !result.checksummed) {
-      setError(result.error ?? 'Invalid address')
       return
     }
 
@@ -71,7 +64,7 @@ export function AddressInput() {
         <input
           type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => setAddress(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="0x... paste any v4 hook address"
           spellCheck={false}

@@ -1,5 +1,6 @@
 import { SUPPORTED_CHAINS } from '../../config/constants'
 import type { FullHookInspection } from '../../types/hook'
+import { PoolDiscoveryPanel } from '../pools/PoolDiscoveryPanel'
 import { Card } from '../shared/Card'
 import { SafetyPanel } from '../safety/SafetyPanel'
 import { SwapImpactPanel } from '../swap/SwapImpactPanel'
@@ -38,6 +39,10 @@ export function HookInfoPanel({ inspection }: HookInfoPanelProps) {
 
       <Card>
         <SafetyPanel />
+      </Card>
+
+      <Card>
+        <PoolDiscoveryPanel />
       </Card>
     </div>
   )

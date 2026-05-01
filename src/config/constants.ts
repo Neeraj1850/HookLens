@@ -1,7 +1,7 @@
 export const UNISWAP_API_BASE = 'https://trade-api.gateway.uniswap.org/v1'
 
 export const UNISWAP_SUBGRAPH_V4 =
-  'https://gateway.thegraph.com/api/subgraphs/id/...' // filled Phase 4
+  'https://gateway.thegraph.com/api/subgraphs/id/DiYPVdygkfjDWhbxGSqAQxwBKmfKnkWQojqeM2rkLb3G'
 
 export const SOURCIFY_API = 'https://sourcify.dev/server'
 export const SOURCIFY_BASE = 'https://sourcify.dev/server'

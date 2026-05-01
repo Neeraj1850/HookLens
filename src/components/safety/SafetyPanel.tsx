@@ -3,6 +3,7 @@ import { useSafetyAnalysis } from '../../hooks/useSafetyAnalysis'
 import { useHookStore } from '../../store/hookStore'
 import type { SafetyCategory } from '../../types/hook'
 import { LoadingDots } from '../shared/LoadingDots'
+import { LoadingSkeleton } from '../shared/LoadingSkeleton'
 import { SafetyCheckItem } from './SafetyCheckItem'
 import { SafetyScoreBadge } from './SafetyScoreBadge'
 
@@ -74,17 +75,11 @@ export function SafetyPanel() {
       )}
 
       {isAnalyzing && (
-        <div className="flex flex-col gap-2 py-4">
-          {[
-            'Fetching source from Sourcify...',
-            'Running 12 safety checks...',
-            'Computing safety score...',
-          ].map((msg) => (
-            <div key={msg} className="flex items-center gap-2 text-xs text-zinc-600">
-              <LoadingDots size="sm" />
-              {msg}
-            </div>
-          ))}
+        <div className="flex flex-col gap-3 py-4">
+          <LoadingSkeleton className="h-12" lines={3} />
+          <p className="text-xs text-zinc-600">
+            Fetching source from Sourcify and running deterministic checks...
+          </p>
         </div>
       )}
 

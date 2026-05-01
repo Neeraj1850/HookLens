@@ -1,8 +1,13 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Layout } from '../components/layout/Layout'
 
 export function NotFound() {
   const navigate = useNavigate()
+
+  useEffect(() => {
+    document.title = '404 — HookLens'
+  }, [])
 
   return (
     <Layout>

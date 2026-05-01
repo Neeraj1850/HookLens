@@ -5,6 +5,7 @@ import { AmountInput } from './AmountInput'
 import { QuoteRow } from './QuoteRow'
 import { TokenSelector } from './TokenSelector'
 import { LoadingDots } from '../shared/LoadingDots'
+import { LoadingSkeleton } from '../shared/LoadingSkeleton'
 
 export function SwapImpactPanel() {
   const {
@@ -109,6 +110,12 @@ export function SwapImpactPanel() {
           {error.includes('API key') && (
             <p className="text-xs text-zinc-700 mt-1">Add your key in Settings</p>
           )}
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="flex flex-col gap-3">
+          <LoadingSkeleton className="h-16" lines={2} />
         </div>
       )}
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { SafetyCheck } from '../../types/hook'
+import { getExplanation } from '../../data/hookExplanations'
 
 const SEVERITY_ICON: Record<SafetyCheck['severity'], string> = {
   critical: 'x',
@@ -21,6 +22,7 @@ interface SafetyCheckItemProps {
 
 export function SafetyCheckItem({ check }: SafetyCheckItemProps) {
   const [expanded, setExpanded] = useState(false)
+  const explanation = getExplanation(check.id)
 
   return (
     <div className="border-b border-[#141414] last:border-b-0">
@@ -70,6 +72,41 @@ export function SafetyCheckItem({ check }: SafetyCheckItemProps) {
             <p className="text-xs font-mono text-zinc-600 bg-zinc-950 rounded-lg px-3 py-2 mt-2">
               {check.detail}
             </p>
+          )}
+          {explanation && (
+            <div className="mt-3 border-t border-[#141414] pt-3 flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-700 uppercase tracking-widest">
+                  via uniswap-ai hooks skill
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {[
+                  ['Why it matters', explanation.why],
+                  ['Attack example', explanation.example],
+                  ['How to fix', explanation.mitigation],
+                ].map(([label, text]) => (
+                  <div key={label} className="flex flex-col gap-1">
+                    <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+                      {label}
+                    </span>
+                    <p className="text-xs text-zinc-400 leading-relaxed">{text}</p>
+                  </div>
+                ))}
+
+                {explanation.reference && (
+                  <a
+                    href={explanation.reference}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-zinc-600 hover:text-white transition-colors underline underline-offset-2 self-start"
+                  >
+                    Reference
+                  </a>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}
