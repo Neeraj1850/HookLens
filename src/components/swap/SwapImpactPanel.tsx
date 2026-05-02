@@ -6,7 +6,7 @@ import { QuoteRow } from './QuoteRow'
 import { TokenSelector } from './TokenSelector'
 import { LoadingDots } from '../shared/LoadingDots'
 import { LoadingSkeleton } from '../shared/LoadingSkeleton'
-import { mergeTokenOptions } from '../../utils/token'
+import { mergeTokenOptions, currencyToTokenDef } from '../../utils/token'
 
 // Chains that the Trading API supports for quotes
 const QUOTABLE_CHAIN_IDS = [8453, 1, 42161]
@@ -29,7 +29,9 @@ export function SwapImpactPanel() {
     swapTokens,
   } = useSwapSimulator()
 
-  const tokens = mergeTokenOptions(getTokensForChain(chainId), [tokenIn, tokenOut])
+  // getTokensForChain returns SDK Currency[]; convert to TokenDef[] for TokenSelector & mergeTokenOptions
+  const chainTokenDefs = getTokensForChain(chainId).map((c) => currencyToTokenDef(c, chainId))
+  const tokens = mergeTokenOptions(chainTokenDefs, [tokenIn, tokenOut])
   const selectedChain = SUPPORTED_CHAINS.find((chain) => chain.id === chainId)
   const canFetch = !isLoading && !!tokenIn && !!tokenOut && !!amount && parseFloat(amount) > 0
 

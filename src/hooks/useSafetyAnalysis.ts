@@ -21,8 +21,7 @@ export function useSafetyAnalysis() {
         })
 
         return analysis
-      } catch (err) {
-        console.error('Safety analysis failed:', err)
+      } catch {
         return null
       }
     },

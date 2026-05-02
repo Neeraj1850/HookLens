@@ -4,8 +4,12 @@ import type { HookAddressCandidate, HookAddressDiscovery } from '../types/hook'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
+// 7-day and 30-day epoch timestamps (computed once per module load)
+const SINCE_7D = Math.floor(Date.now() / 1000) - 7 * 86400
+const SINCE_30D = Math.floor(Date.now() / 1000) - 30 * 86400
+
 const HOOKS_BY_CHAIN_QUERY = `
-  query HooksByChain($first: Int!, $skip: Int!) {
+  query HooksByChain($first: Int!, $skip: Int!, $since7d: Int!, $since30d: Int!) {
     pools(
       first: $first
       skip: $skip
@@ -21,6 +25,18 @@ const HOOKS_BY_CHAIN_QUERY = `
       feeTier
       token0 { symbol }
       token1 { symbol }
+      poolDayData7d: poolDayData(
+        first: 7
+        orderBy: date
+        orderDirection: desc
+        where: { date_gte: $since7d }
+      ) { volumeUSD txCount }
+      poolDayData30d: poolDayData(
+        first: 30
+        orderBy: date
+        orderDirection: desc
+        where: { date_gte: $since30d }
+      ) { volumeUSD txCount }
     }
   }
 `
@@ -35,6 +51,8 @@ interface RawPool {
   feeTier?: string | number
   token0?: { symbol?: string }
   token1?: { symbol?: string }
+  poolDayData7d?: Array<{ volumeUSD?: string; txCount?: string | number }>
+  poolDayData30d?: Array<{ volumeUSD?: string; txCount?: string | number }>
 }
 
 export async function discoverAllHookAddresses(
@@ -124,7 +142,7 @@ async function fetchChainHookAddresses(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       query: HOOKS_BY_CHAIN_QUERY,
-      variables: { first: 100, skip: 0 },
+      variables: { first: 100, skip: 0, since7d: SINCE_7D, since30d: SINCE_30D },
     }),
   })
 
@@ -186,6 +204,21 @@ function summarizeHookPools(
     const volumeUSD = Number(pool.volumeUSD ?? 0)
     const feeTier = Number(pool.feeTier ?? 0)
     const pair = `${pool.token0?.symbol ?? '???'}/${pool.token1?.symbol ?? '???'}`
+
+    // Aggregate poolDayData windows
+    const txCount7d = (pool.poolDayData7d ?? []).reduce(
+      (sum, d) => sum + Number(d.txCount ?? 0), 0,
+    )
+    const txCount30d = (pool.poolDayData30d ?? []).reduce(
+      (sum, d) => sum + Number(d.txCount ?? 0), 0,
+    )
+    const volume7dUSD = (pool.poolDayData7d ?? []).reduce(
+      (sum, d) => sum + parseFloat(String(d.volumeUSD ?? '0')), 0,
+    )
+    const volume30dUSD = (pool.poolDayData30d ?? []).reduce(
+      (sum, d) => sum + parseFloat(String(d.volumeUSD ?? '0')), 0,
+    )
+
     const current = byHook.get(hook)
 
     if (!current) {
@@ -195,12 +228,17 @@ function summarizeHookPools(
         chainName: chain.name,
         poolCount: 1,
         txCount: Number.isFinite(txCount) ? txCount : 0,
+        txCount7d,
+        txCount30d,
         volumeUSD: Number.isFinite(volumeUSD) ? volumeUSD : 0,
+        volume7dUSD,
+        volume30dUSD,
         liquidity: pool.liquidity ?? '0',
         topPair: pair,
         topFeeTier: Number.isFinite(feeTier) ? feeTier : 0,
         source: 'subgraph',
         description: describeHook(pair, feeTier, chain.name),
+        recentlyActive: txCount7d > 0,
       })
       continue
     }
@@ -209,7 +247,12 @@ function summarizeHookPools(
     const addTx = Number.isFinite(txCount) ? txCount : 0
     const addVol = Number.isFinite(volumeUSD) ? volumeUSD : 0
     current.txCount += addTx
+    current.txCount7d += txCount7d
+    current.txCount30d += txCount30d
     current.volumeUSD += addVol
+    current.volume7dUSD += volume7dUSD
+    current.volume30dUSD += volume30dUSD
+    current.recentlyActive = current.recentlyActive || txCount7d > 0
     // Track the busiest pool pair as the representative for this hook
     if (addTx > 0 && txCount > (current.txCount - addTx)) {
       current.topPair = pair

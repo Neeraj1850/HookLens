@@ -31,8 +31,22 @@ export function Header() {
               {label}
             </Link>
           ))}
+
+          {/* AI Studio — accent nav item */}
+          <Link
+            to="/ai-studio"
+            className={`px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 ${
+              pathname === '/ai-studio'
+                ? 'bg-yellow-400/10 text-yellow-300 border border-yellow-900/60'
+                : 'text-zinc-400 hover:text-yellow-300 hover:bg-yellow-400/5 border border-transparent hover:border-yellow-900/40'
+            }`}
+          >
+            <span className="text-yellow-400/80">✦</span>
+            AI Studio
+          </Link>
         </nav>
       </div>
     </header>
   )
 }
+

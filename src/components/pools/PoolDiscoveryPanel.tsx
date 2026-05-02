@@ -16,7 +16,8 @@ export function PoolDiscoveryPanel() {
             Pools Using This Hook
           </span>
           <p className="text-xs text-zinc-500">
-            Find pools first, then expand a pool row to run live swap impact
+            Discover active pools, then click <span className="text-yellow-400/80">✦</span>{' '}
+            <span className="text-zinc-400">Simulate in AI Studio</span> to run a live swap analysis
           </p>
         </div>
         {!poolDiscovery && (

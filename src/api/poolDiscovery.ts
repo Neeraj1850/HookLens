@@ -10,8 +10,13 @@ const INITIALIZE_EVENT = parseAbiItem(
 )
 const NATIVE_CURRENCY = '0x0000000000000000000000000000000000000000'
 
+// Unix timestamp helpers for 7d / 30d windows
+function daysAgoTimestamp(days: number): number {
+  return Math.floor(Date.now() / 1000) - days * 86400
+}
+
 const POOLS_BY_HOOK_QUERY = `
-  query PoolsByHook($hook: String!, $skip: Int!) {
+  query PoolsByHook($hook: String!, $skip: Int!, $since7d: Int!, $since30d: Int!) {
     pools(
       first: 20
       skip: $skip
@@ -28,6 +33,18 @@ const POOLS_BY_HOOK_QUERY = `
       volumeUSD
       txCount
       hooks
+      poolDayData7d: poolDayData(
+        first: 7
+        orderBy: date
+        orderDirection: desc
+        where: { date_gte: $since7d }
+      ) { volumeUSD txCount date }
+      poolDayData30d: poolDayData(
+        first: 30
+        orderBy: date
+        orderDirection: desc
+        where: { date_gte: $since30d }
+      ) { volumeUSD txCount date }
     }
   }
 `
@@ -111,6 +128,8 @@ async function fetchPoolsFromSubgraph(
       variables: {
         hook: hookAddress.toLowerCase(),
         skip: 0,
+        since7d: daysAgoTimestamp(7),
+        since30d: daysAgoTimestamp(30),
       },
     }),
   })
@@ -142,6 +161,19 @@ function mapSubgraphPool(p: Record<string, unknown>, chainId: number): HookPool 
   const t0 = p.token0 as Record<string, unknown> | undefined
   const t1 = p.token1 as Record<string, unknown> | undefined
 
+  // Aggregate 7d and 30d poolDayData
+  const dayData7d = (p.poolDayData7d as Array<Record<string, unknown>> | undefined) ?? []
+  const dayData30d = (p.poolDayData30d as Array<Record<string, unknown>> | undefined) ?? []
+
+  const volume7dUSD = dayData7d
+    .reduce((sum, d) => sum + parseFloat(String(d.volumeUSD ?? '0')), 0)
+    .toFixed(2)
+  const volume30dUSD = dayData30d
+    .reduce((sum, d) => sum + parseFloat(String(d.volumeUSD ?? '0')), 0)
+    .toFixed(2)
+  const txCount7d = dayData7d.reduce((sum, d) => sum + Number(d.txCount ?? 0), 0)
+  const txCount30d = dayData30d.reduce((sum, d) => sum + Number(d.txCount ?? 0), 0)
+
   return {
     id: String(p.id ?? ''),
     chainId,
@@ -160,6 +192,11 @@ function mapSubgraphPool(p: Record<string, unknown>, chainId: number): HookPool 
     liquidityUSD: 0,
     volumeUSD: String(p.volumeUSD ?? '0'),
     txCount: Number(p.txCount ?? 0),
+    volume7dUSD,
+    volume30dUSD,
+    txCount7d,
+    txCount30d,
+    recentlyActive: txCount7d > 0,
     hook: normalizeSubgraphHook(p.hooks ?? p.hook),
     source: 'subgraph',
   }
@@ -261,6 +298,11 @@ function mapInitializeLog(log: RpcLog, hookLower: string, chainId: number): Hook
       liquidityUSD: 0,
       volumeUSD: '0',
       txCount: 0,
+      volume7dUSD: '0',
+      volume30dUSD: '0',
+      txCount7d: 0,
+      txCount30d: 0,
+      recentlyActive: false,
       hook: hookFromLog,
       source: 'onchain',
     }
@@ -341,8 +383,8 @@ export async function discoverPools(
       source: 'subgraph',
       fetchedAt: Date.now(),
     }
-  } catch (subgraphErr) {
-    console.warn('Subgraph failed, trying onchain:', subgraphErr)
+  } catch {
+    // subgraph unavailable — fall through to onchain fallback
   }
 
   try {

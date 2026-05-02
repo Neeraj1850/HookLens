@@ -217,6 +217,12 @@ function HookRow({ hook }: { hook: EnrichedHook }) {
             <span className="text-[10px] text-zinc-600">
               {hook.poolCount} {hook.poolCount === 1 ? 'pool' : 'pools'}
             </span>
+            {hook.recentlyActive && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-900/30 border border-emerald-800/50 text-emerald-400 shrink-0 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                Active 7d
+              </span>
+            )}
           </div>
           <p className="text-xs text-zinc-600 mt-1 leading-relaxed line-clamp-1 max-w-md">
             {hook.description}
@@ -248,12 +254,14 @@ function HookRow({ hook }: { hook: EnrichedHook }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 pt-2 border-t border-zinc-900/60">
+      <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 pt-2 border-t border-zinc-900/60">
         {[
           ['Top Pair', hook.topPair || '—'],
           ['Fee Tier', formatFee(hook.topFeeTier)],
-          ['Txns', hook.txCount > 0 ? hook.txCount.toLocaleString() : '—'],
-          ['Volume', hook.volumeUSD > 0 ? formatUSD(hook.volumeUSD) : '—'],
+          ['Vol (30d)', hook.volume30dUSD > 0 ? formatUSD(hook.volume30dUSD) : '—'],
+          ['Txns (30d)', hook.txCount30d > 0 ? hook.txCount30d.toLocaleString() : '—'],
+          ['Vol (all)', hook.volumeUSD > 0 ? formatUSD(hook.volumeUSD) : '—'],
+          ['Txns (all)', hook.txCount > 0 ? hook.txCount.toLocaleString() : '—'],
         ].map(([lbl, val]) => (
           <div key={lbl} className="flex flex-col gap-0.5">
             <span className="text-[9px] text-zinc-700 uppercase tracking-wider">{lbl}</span>

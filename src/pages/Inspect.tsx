@@ -7,7 +7,7 @@ import { Layout } from '../components/layout/Layout'
 import { PoolDiscoveryPanel } from '../components/pools/PoolDiscoveryPanel'
 import { SafetyPanel } from '../components/safety/SafetyPanel'
 import { SafetyScoreBadge } from '../components/safety/SafetyScoreBadge'
-import { SwapImpactPanel } from '../components/swap/SwapImpactPanel'
+
 import { Badge } from '../components/shared/Badge'
 import { Card } from '../components/shared/Card'
 import { AccordionSection } from '../components/shared/AccordionSection'
@@ -45,7 +45,6 @@ export function Inspect() {
   const {
     setAddress,
     setChainId,
-    quoteComparison,
     poolDiscovery,
   } = useHookStore()
   const safety = currentInspection?.safety
@@ -138,14 +137,6 @@ export function Inspect() {
                 <CallbackFlags flags={decoded.flags} activeCallbacks={decoded.activeCallbacks} />
               </AccordionSection>
 
-              <AccordionSection
-                id="swap"
-                title="Swap Impact"
-                badge={quoteComparison ? 'Loaded' : 'Developer tool'}
-                badgeVariant={quoteComparison ? 'active' : 'muted'}
-              >
-                <SwapImpactPanel />
-              </AccordionSection>
 
               <AccordionSection
                 id="pools"
@@ -213,11 +204,15 @@ export function Inspect() {
                   />
                   <StepItem
                     num={2}
-                    text="Find pools first, then run Swap Impact using a real pool's token pair for accurate quotes."
+                    text="Find pools to discover which token pairs are live on this hook."
                   />
                   <StepItem
                     num={3}
                     text="Run Safety Analysis to check for reentrancy, selfdestruct, tx.origin, and access control issues."
+                  />
+                  <StepItem
+                    num={4}
+                    text="Head to AI Studio → Agentic Swap Simulator for a live quote comparison and AI-powered routing decision."
                   />
                 </div>
               </Card>
@@ -230,11 +225,6 @@ export function Inspect() {
                 <div className="flex flex-col gap-3">
                   {[
                     {
-                      key: 'VITE_UNISWAP_API_KEY',
-                      label: 'Trading API',
-                      desc: 'Quote comparison',
-                    },
-                    {
                       key: 'VITE_THEGRAPH_API_KEY',
                       label: 'The Graph',
                       desc: 'Pool discovery',
@@ -243,6 +233,11 @@ export function Inspect() {
                       key: 'sourcify.dev',
                       label: 'Sourcify',
                       desc: 'Safety analysis',
+                    },
+                    {
+                      key: 'AI Studio',
+                      label: 'Trading API',
+                      desc: 'Quote comparison (in AI Studio)',
                     },
                   ].map(({ key, label, desc }) => (
                     <div key={key} className="flex flex-col gap-0.5">

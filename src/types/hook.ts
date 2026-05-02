@@ -120,7 +120,18 @@ export interface HookPool {
   liquidity: string
   liquidityUSD: number
   volumeUSD: string
+  /** All-time transaction count */
   txCount: number
+  /** Volume in USD over the last 7 days (from poolDayData) */
+  volume7dUSD: string
+  /** Volume in USD over the last 30 days (from poolDayData) */
+  volume30dUSD: string
+  /** Swap transactions in the last 7 days */
+  txCount7d: number
+  /** Swap transactions in the last 30 days */
+  txCount30d: number
+  /** True when any swap was recorded through this hook in the last 7 days */
+  recentlyActive: boolean
   hook: string
   source: 'subgraph' | 'onchain'
 }
@@ -158,12 +169,18 @@ export interface HookAddressCandidate {
   chainName: string
   poolCount: number
   txCount: number
+  txCount7d: number
+  txCount30d: number
   volumeUSD: number
+  volume7dUSD: number
+  volume30dUSD: number
   liquidity: string
   topPair: string
   topFeeTier: number
   source: 'subgraph' | 'curated'
   description: string
+  /** True when txCount7d > 0 */
+  recentlyActive: boolean
 }
 
 export interface HookAddressDiscovery {

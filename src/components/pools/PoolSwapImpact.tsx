@@ -6,6 +6,7 @@ import { DUMMY_SWAPPER, getDualQuote, toWei } from '../../api/uniswap'
 import type { HookPool, PoolMarketComparison } from '../../types/hook'
 import type { HookQuoteComparison, TokenDef } from '../../types/uniswap'
 import { formatUSD } from '../../utils/format'
+import { tokenDefToCurrency } from '../../utils/token'
 import { LoadingSkeleton } from '../shared/LoadingSkeleton'
 import { QuoteRow } from '../swap/QuoteRow'
 
@@ -240,20 +241,11 @@ export function PoolSwapImpact({ pool, chainId }: PoolSwapImpactProps) {
     setComparison(null)
 
     try {
-      console.info('[HookLens pool quote] selected pool quote context', {
-        poolId: pool.id,
-        poolHook: pool.hook,
-        poolSource: pool.source,
-        chainId,
-        quoteChainId,
-        tokenIn,
-        tokenOut,
-        amount,
-        swapper,
-      })
+      const currencyIn  = tokenDefToCurrency(tokenIn)
+      const currencyOut = tokenDefToCurrency(tokenOut)
       const result = await getDualQuote(
-        tokenIn,
-        tokenOut,
+        currencyIn,
+        currencyOut,
         amount,
         quoteChainId,
         swapper,
