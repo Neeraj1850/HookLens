@@ -176,17 +176,18 @@ function getApiKey(): string {
 /**
  * Resolves the Trading API base URL.
  *
- * - In development: uses the Vite dev server proxy at /hooklens-uniswap to avoid CORS.
- * - In production: uses VITE_UNISWAP_PROXY_URL if configured, otherwise the public gateway.
+ * - Always uses the /hooklens-uniswap server-side proxy path, which is handled by:
+ *   - The Vite dev server plugin (vite.config.ts) during local development
+ *   - Vercel rewrites (vercel.json) in production: /hooklens-uniswap/* → trade-api.gateway.uniswap.org/*
+ * - VITE_UNISWAP_PROXY_URL overrides this for custom proxy deployments.
  *
- * Note: The Uniswap Trading API does not support direct browser requests without a proxy
- * because the API key must not be exposed in browser requests to the public gateway.
+ * This avoids CORS: the browser always talks to the same origin, and the proxy
+ * forwards the request server-side with the API key in the header.
  */
 function getApiBase(): string {
   const configuredProxy = String(import.meta.env.VITE_UNISWAP_PROXY_URL ?? '').trim()
   if (configuredProxy) return configuredProxy.replace(/\/$/, '')
-  if (import.meta.env.DEV === true) return '/hooklens-uniswap/v1'
-  return UNISWAP_API_BASE
+  return '/hooklens-uniswap/v1'
 }
 
 // ─── Proxy envelope detection ─────────────────────────────────────────────────
@@ -257,9 +258,7 @@ async function uniswapFetch<T>(endpoint: string, payload: unknown): Promise<T> {
   } catch (err) {
     debugLog('network error', { endpoint, url, err })
     throw new Error(
-      import.meta.env.DEV === true
-        ? 'Quote request did not reach the API. Make sure the Vite dev server is running (npm run dev) so the local proxy is active.'
-        : 'Quote request was blocked by the browser or network. Set VITE_UNISWAP_PROXY_URL to a server-side proxy to bypass CORS.',
+      'Quote request did not reach the API. In development, make sure the Vite dev server is running (npm run dev). In production, ensure the Vercel proxy rewrite in vercel.json is deployed.',
       { cause: err },
     )
   }
