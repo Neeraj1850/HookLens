@@ -17,7 +17,7 @@ export function PoolDiscoveryPanel() {
           </span>
           <p className="text-xs text-zinc-500">
             Discover active pools, then click <span className="text-yellow-400/80">✦</span>{' '}
-            <span className="text-zinc-400">Simulate in AI Studio</span> to run a live swap analysis
+            <span className="text-zinc-400">Simulate in Swap Simulator</span> to run a live swap analysis
           </p>
         </div>
         {!poolDiscovery && (

@@ -212,7 +212,7 @@ export function Inspect() {
                   />
                   <StepItem
                     num={4}
-                    text="Head to AI Studio → Agentic Swap Simulator for a live quote comparison and AI-powered routing decision."
+                    text="Head to Swap Simulator for a live quote comparison and deterministic routing decision using the Uniswap Trading API."
                   />
                 </div>
               </Card>
@@ -235,9 +235,9 @@ export function Inspect() {
                       desc: 'Safety analysis',
                     },
                     {
-                      key: 'AI Studio',
+                      key: 'Swap Simulator',
                       label: 'Trading API',
-                      desc: 'Quote comparison (in AI Studio)',
+                      desc: 'Quote comparison (in Swap Simulator)',
                     },
                   ].map(({ key, label, desc }) => (
                     <div key={key} className="flex flex-col gap-0.5">

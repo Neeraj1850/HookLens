@@ -44,7 +44,7 @@ HookLens is a developer-focused analytics platform for Uniswap v4. It enables de
 
 - **Pool Market Comparison** — For any pool using a hook, see a side-by-side comparison of hook pools vs. standard pools for the same token pair.
 
-- **AI Studio — Agentic Swap Simulator** — A 6-step deterministic agent pipeline (Plan → Quote → Score → Risk → Decide → Report) powered by the Uniswap Trading API. Compares `V4_HOOKS_ONLY` against `BEST_PRICE` routing using `@uniswap/sdk-core` Currency types — no hardcoded token addresses or decimals.
+- **Swap Simulator — Agentic Swap Pipeline** — A 6-step deterministic agent pipeline (Plan → Quote → Score → Risk → Decide → Report) powered by the Uniswap Trading API. Compares `V4_HOOKS_ONLY` against `BEST_PRICE` routing using `@uniswap/sdk-core` Currency types — no hardcoded token addresses or decimals.
 
 ---
 
@@ -124,9 +124,9 @@ Click **Inspect →** on any hook row (or navigate to `/inspect/:chainId/:addres
 - All pools using this hook with 7d/30d metrics
 - Same-pair pool comparison (hook vs. no-hook)
 
-### 3. Simulate with AI Studio
+### 3. Simulate with Swap Simulator
 
-Click **✦ Simulate in AI Studio →** from any pool card, or navigate to **/ai-studio**. Select a token pair and amount, then click **Run Agent**. The pipeline:
+Click **✦ Simulate in Swap Simulator →** from any pool card, or navigate to **/ai-studio**. Select a token pair and amount, then click **Run Agent**. The pipeline:
 
 1. **Plan** — builds a typed swap intent using `@uniswap/sdk-core` Currency objects
 2. **Quote** — fetches `V4_HOOKS_ONLY` and `BEST_PRICE` routes from the Trading API

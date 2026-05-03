@@ -214,10 +214,10 @@ export function AiStudio() {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <span className="text-yellow-400/80 text-lg">✦</span>
-            <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Uniswap AI · Agentic Swap Simulator</span>
+            <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Uniswap Trading API · Agentic Pipeline</span>
           </div>
           <h1 className="text-2xl font-semibold text-white tracking-tight">
-            AI Studio
+            Swap Simulator
           </h1>
           <p className="text-xs text-zinc-500 max-w-2xl leading-relaxed">
             A 6-step agentic pipeline that fetches dual quotes from the Uniswap Trading API
@@ -333,7 +333,7 @@ export function AiStudio() {
 
               {/* Run button */}
               <button
-                id="ai-studio-run-btn"
+                id="swap-simulator-run-btn"
                 onClick={handleRun}
                 disabled={!canRun}
                 className="w-full py-3.5 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed bg-white text-black hover:bg-zinc-100"

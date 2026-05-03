@@ -7,7 +7,7 @@
 
 ## 1. Overview
 
-**What we built:** HookLens is a Uniswap v4 hook inspector and agentic swap simulator. It discovers live hooks across chains via The Graph subgraph, decodes their callback flags from address bit patterns, runs safety analysis via Sourcify, and powers a 6-step AI agent pipeline that compares `V4_HOOKS_ONLY` vs `BEST_PRICE` routing decisions using the Uniswap Trading API.
+**What we built:** HookLens is a Uniswap v4 hook inspector and agentic swap simulator. It discovers live hooks across chains via The Graph subgraph, decodes their callback flags from address bit patterns, runs safety analysis via Sourcify, and powers a 6-step deterministic agent pipeline (**Swap Simulator**) that compares `V4_HOOKS_ONLY` vs `BEST_PRICE` routing decisions using the Uniswap Trading API.
 
 **How we used the Uniswap API and v4 SDK:**
 - `POST /v1/quote` with `hooksOptions: "V4_HOOKS_ONLY"` and `"BEST_PRICE"` for dual-route comparison

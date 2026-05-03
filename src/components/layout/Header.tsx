@@ -32,7 +32,7 @@ export function Header() {
             </Link>
           ))}
 
-          {/* AI Studio — accent nav item */}
+          {/* Swap Simulator — accent nav item */}
           <Link
             to="/ai-studio"
             className={`px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 ${
@@ -42,7 +42,7 @@ export function Header() {
             }`}
           >
             <span className="text-yellow-400/80">✦</span>
-            AI Studio
+            Swap Simulator
           </Link>
         </nav>
       </div>

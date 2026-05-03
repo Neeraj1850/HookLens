@@ -180,7 +180,7 @@ export function PoolCard({ pool, chainId }: PoolCardProps) {
           className="text-[10px] text-zinc-600 hover:text-white border border-zinc-900 hover:border-zinc-700 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
         >
           <span className="text-yellow-400/80">✦</span>
-          Simulate in AI Studio →
+          Simulate in Swap Simulator →
         </Link>
       </div>
 
