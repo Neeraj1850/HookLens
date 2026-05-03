@@ -21,7 +21,6 @@ HookLens is a Uniswap v4 hook inspector and swap simulation workspace for develo
 | Styling | Tailwind CSS |
 | Routing | React Router |
 | State | Zustand |
-| Wallet context | wagmi + RainbowKit |
 | Uniswap quoting | Trading API through `/hooklens-uniswap/v1/*` |
 | Local quote proxy | Vite middleware in `vite.config.ts` |
 | Vercel quote proxy | `api/uniswap/[...path].js` |
@@ -36,7 +35,6 @@ Create a `.env` file in the repo root:
 ```env
 UNISWAP_API_KEY=your_uniswap_trading_api_key
 VITE_THEGRAPH_API_KEY=your_thegraph_api_key
-VITE_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
 ```
 
 `UNISWAP_API_KEY` is read by the local Vite proxy and the Vercel serverless proxy, so it does not need to be exposed in the browser bundle. `VITE_UNISWAP_API_KEY` is still accepted as a legacy fallback, but `UNISWAP_API_KEY` is preferred.
@@ -82,6 +80,19 @@ npm run preview
 - `/dashboard` - indexed hook discovery
 - `/inspect/:chainId/:address` - callback, pool, and safety inspection
 - `/ai-studio` - swap simulation pipeline and local auditor chat
+
+## Future Roadmap
+
+- Batch quote mode for comparing multiple token amounts and route settings in one run.
+- Quote result caching with stale-time controls to reduce repeated Trading API calls.
+- Hook watchlists with saved addresses, notes, and quick re-simulation.
+- CSV and JSON exports for dashboard hook discovery and simulator reports.
+- Pool liquidity health scoring using volume, transaction count, and recent activity windows.
+- Source-aware analysis that maps findings to exact Solidity file names and function names.
+- Route explanation panels that separate liquidity shortage, hook-only routing, gas, slippage, and price impact.
+- Optional wallet connection only if transaction simulation or execution becomes part of the product.
+- Server-side subgraph proxy support so The Graph keys can also stay out of the browser.
+- Regression fixtures for quote parsing, hook flag decoding, and safety checks.
 
 ## Notes
 
