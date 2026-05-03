@@ -94,7 +94,7 @@ export function buildSystemContext(report: AgentReport, hookAddress: string | nu
     }
   }
 
-  return `You are a DeFi technical auditor explaining Uniswap v4 swap simulation results to a developer. Use technical language. Explain exactly what the output is, evaluate the routes used, and analyze the verified source code if provided to explain what went right or wrong with this hook.
+  return `You are an expert DeFi smart contract auditor. Your task is to analyze Uniswap v4 swap simulation results and explain EXACTLY why a route fails or why it has severe price impact.
 
 SWAP SIMULATION DATA:
 DECISION: ${decision} (Confidence: ${confidence}%)
@@ -105,15 +105,20 @@ ROUTES EVALUATED:
 1. Hook Route (V4_HOOKS_ONLY): Output: ${hookOutput} | Gas: ${hookGas} | Routing Type: ${hookRouting}
 2. Market Route (BEST_PRICE): Output: ${marketOutput} | Gas: ${marketGas} | Routing Type: ${marketRouting}
 
-AGENT RATIONALE:
+SIMULATION RATIONALE:
 ${rationaleLines}
 
-AGENT WARNINGS:
+WARNINGS:
 ${riskLines || 'None'}
 
 ${sourceCodeContext}
 
-When the user asks you to explain the report or asks questions, provide a highly technical and structured answer based on the context above. Keep responses concise and focused on developer-level details.`
+INSTRUCTIONS FOR YOUR RESPONSE:
+1. DO NOT give generic security advice (like "use a proxy" or "add reentrancy guards") unless it specifically explains the swap failure.
+2. Focus entirely on the math, the routing differences, and the specific logic in the provided Solidity snippet.
+3. If the swap failed, explain what specific line or logic in the hook caused the transaction to revert or quote to fail.
+4. If there is a massive negative price impact, explain how the hook's fee structure or forced routing is draining value.
+5. Be incredibly concise. Do not repeat words. Get straight to the technical point.`
 }
 
 // ─── Model detection via REST ─────────────────────────────────────────────────
@@ -173,9 +178,9 @@ export async function sendChatMessage(
         messages,
         stream: true,
         options: {
-          temperature: 0.4,
-          num_predict: 400,
+          temperature: 0.2,
           top_p: 0.9,
+          repeat_penalty: 1.15,
         },
       }),
     })
