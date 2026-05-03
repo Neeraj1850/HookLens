@@ -50,15 +50,20 @@ interface OllamaListResponse {
   models: OllamaModel[]
 }
 
-interface OllamaGenerateChunk {
-  response: string
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+interface OllamaChatChunk {
+  model: string
+  message?: ChatMessage
   done: boolean
-  model?: string
 }
 
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
-function buildPrompt(report: AgentReport, hookAddress: string | null, safety: SafetyAnalysis | null): string {
+export function buildSystemContext(report: AgentReport, hookAddress: string | null, safety: SafetyAnalysis | null): string {
   const decision = report.decision
   const confidence = report.confidence
   
@@ -108,12 +113,7 @@ ${riskLines || 'None'}
 
 ${sourceCodeContext}
 
-Please explain in detail:
-1. The exact routes used and the output differences (gas, output amount, routing type).
-2. Based on the verified source code snippet (if provided) and the rationale, explain technically what went wrong or good with this hook for this specific swap intent.
-3. Conclude with a clear technical recommendation.
-
-Keep the response structured, highly technical, and concise (under 250 words).`
+When the user asks you to explain the report or asks questions, provide a highly technical and structured answer based on the context above. Keep responses concise and focused on developer-level details.`
 }
 
 // ─── Model detection via REST ─────────────────────────────────────────────────
@@ -150,35 +150,31 @@ export interface ExplainResult {
 }
 
 /**
- * Generate a plain-English explanation of an AgentReport using Ollama.
- * Streams the NDJSON response from /api/generate token-by-token.
+ * Sends a conversation to the Ollama Chat API.
+ * Streams the NDJSON response token-by-token.
  *
- * @param report      The completed AgentReport from runAgentPipeline
- * @param hookAddress Optional hook contract address for context
+ * @param messages    Full history of ChatMessages (system + user + assistant)
  * @param onChunk     Called with each streamed text token as it arrives
  * @returns           Final complete text + model name used
  */
-export async function explainReport(
-  report: AgentReport,
-  hookAddress: string | null,
-  safety: SafetyAnalysis | null,
+export async function sendChatMessage(
+  messages: ChatMessage[],
   onChunk: (chunk: string) => void,
 ): Promise<ExplainResult> {
   const model = await detectModel()
-  const prompt = buildPrompt(report, hookAddress, safety)
 
   let res: Response
   try {
-    res = await fetch(`${OLLAMA_HOST}/api/generate`, {
+    res = await fetch(`${OLLAMA_HOST}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        prompt,
+        messages,
         stream: true,
         options: {
           temperature: 0.4,
-          num_predict: 200,
+          num_predict: 400,
           top_p: 0.9,
         },
       }),
@@ -189,7 +185,7 @@ export async function explainReport(
 
   if (!res.ok || !res.body) throw new OllamaUnavailableError()
 
-  // Stream NDJSON — each line is a JSON object { response, done }
+  // Stream NDJSON — each line is a JSON object { message: { content }, done }
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let fullText = ''
@@ -207,10 +203,10 @@ export async function explainReport(
       const trimmed = line.trim()
       if (!trimmed) continue
       try {
-        const chunk = JSON.parse(trimmed) as OllamaGenerateChunk
-        if (chunk.response) {
-          fullText += chunk.response
-          onChunk(chunk.response)
+        const chunk = JSON.parse(trimmed) as OllamaChatChunk
+        if (chunk.message?.content) {
+          fullText += chunk.message.content
+          onChunk(chunk.message.content)
         }
         if (chunk.done) break
       } catch {

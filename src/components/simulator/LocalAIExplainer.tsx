@@ -1,10 +1,12 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { AgentReport } from '../../api/agentEngine'
 import {
-  explainReport,
+  sendChatMessage,
+  buildSystemContext,
   isOllamaAvailable,
   OllamaUnavailableError,
   OllamaNoModelError,
+  type ChatMessage,
 } from '../../api/localAI'
 
 import type { SafetyAnalysis } from '../../types/hook'
@@ -15,90 +17,146 @@ interface Props {
   safety?: SafetyAnalysis | null
 }
 
-type UIState =
-  | { phase: 'idle' }
-  | { phase: 'checking' }
-  | { phase: 'unavailable'; hint: string }
-  | { phase: 'generating'; model: string; partial: string }
-  | { phase: 'done'; model: string; text: string }
-  | { phase: 'error'; message: string }
+type ChatPhase = 'idle' | 'checking' | 'unavailable' | 'chatting' | 'error'
 
 export function LocalAIExplainer({ report, hookAddress, safety }: Props) {
-  const [state, setState] = useState<UIState>({ phase: 'idle' })
+  const [phase, setPhase] = useState<ChatPhase>('idle')
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [input, setInput] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [hint, setHint] = useState('')
+  const [modelName, setModelName] = useState('…')
+
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom of chat
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages])
 
   // Reset when report changes (new simulation run)
   useEffect(() => {
-    setState({ phase: 'idle' })
+    setPhase('idle')
+    setMessages([])
+    setInput('')
+    setIsGenerating(false)
   }, [report.completedAt])
 
-  const handleExplain = useCallback(async () => {
-    setState({ phase: 'checking' })
+  const startChat = useCallback(async () => {
+    setPhase('checking')
 
     const available = await isOllamaAvailable()
     if (!available) {
-      setState({
-        phase: 'unavailable',
-        hint: 'Start Ollama: ollama serve — then pull a model: ollama pull llama3.2',
-      })
+      setHint('Start Ollama: ollama serve — then pull a model: ollama pull llama3.2')
+      setPhase('unavailable')
       return
     }
 
-    setState({ phase: 'generating', model: '…', partial: '' })
+    setPhase('chatting')
+    setIsGenerating(true)
+    setModelName('…')
+
+    const sysMsg: ChatMessage = {
+      role: 'system',
+      content: buildSystemContext(report, hookAddress, safety || null),
+    }
+
+    const firstMsg: ChatMessage = {
+      role: 'user',
+      content: 'Explain this swap simulation report and verify the hook contract safety.',
+    }
+
+    // Initialize state with system and user msg, plus empty assistant msg for streaming
+    const initMsgs = [sysMsg, firstMsg]
+    setMessages([...initMsgs, { role: 'assistant', content: '' }])
 
     try {
-      let model = '…'
-      const result = await explainReport(report, hookAddress, safety || null, (chunk) => {
-        setState((prev) =>
-          prev.phase === 'generating'
-            ? { ...prev, partial: prev.partial + chunk, model }
-            : prev,
-        )
+      const result = await sendChatMessage(initMsgs, (chunk) => {
+        setMessages((prev) => {
+          const newMsgs = [...prev]
+          const last = newMsgs[newMsgs.length - 1]
+          if (last && last.role === 'assistant') {
+            last.content += chunk
+          }
+          return newMsgs
+        })
       })
-      model = result.model
-      setState({ phase: 'done', model: result.model, text: result.text })
+      setModelName(result.model)
     } catch (err) {
-      if (err instanceof OllamaUnavailableError) {
-        setState({
-          phase: 'unavailable',
-          hint: 'Start Ollama: ollama serve — then pull a model: ollama pull llama3.2',
-        })
-      } else if (err instanceof OllamaNoModelError) {
-        setState({
-          phase: 'unavailable',
-          hint: err.message,
-        })
-      } else {
-        setState({
-          phase: 'error',
-          message: err instanceof Error ? err.message : 'Local AI explanation failed',
-        })
-      }
+      handleError(err)
+    } finally {
+      setIsGenerating(false)
     }
   }, [report, hookAddress, safety])
 
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isGenerating) return
+
+    const userMsg: ChatMessage = { role: 'user', content: input.trim() }
+    const newMsgs = [...messages, userMsg]
+    
+    setInput('')
+    setMessages([...newMsgs, { role: 'assistant', content: '' }])
+    setIsGenerating(true)
+
+    try {
+      const result = await sendChatMessage(newMsgs, (chunk) => {
+        setMessages((prev) => {
+          const updated = [...prev]
+          const last = updated[updated.length - 1]
+          if (last && last.role === 'assistant') {
+            last.content += chunk
+          }
+          return updated
+        })
+      })
+      setModelName(result.model)
+    } catch (err) {
+      handleError(err)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleError = (err: unknown) => {
+    if (err instanceof OllamaUnavailableError) {
+      setHint('Start Ollama: ollama serve — then pull a model: ollama pull llama3.2')
+      setPhase('unavailable')
+    } else if (err instanceof OllamaNoModelError) {
+      setHint(err.message)
+      setPhase('unavailable')
+    } else {
+      setHint(err instanceof Error ? err.message : 'Local AI chat failed')
+      setPhase('error')
+    }
+  }
+
   // ── Idle ────────────────────────────────────────────────────────────────────
-  if (state.phase === 'idle') {
+  if (phase === 'idle') {
     return (
-      <div className="border border-zinc-900 rounded-2xl p-5 flex flex-col gap-3 bg-[#0a0a0a]">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex flex-col gap-0.5">
+      <div className="border border-zinc-900 rounded-2xl p-6 flex flex-col gap-4 bg-gradient-to-br from-[#0a0a0a] to-[#111] shadow-2xl overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 blur-3xl rounded-full" />
+        <div className="flex items-center justify-between gap-4 relative z-10">
+          <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Local AI</span>
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full border border-zinc-800 text-zinc-700">
-                Ollama · no API key
+              <span className="text-xs font-semibold text-zinc-300 tracking-wide">Local AI Assistant</span>
+              <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400">
+                Privacy First
               </span>
             </div>
-            <p className="text-xs text-zinc-500">
-              Explain this result in plain English using a local model.
+            <p className="text-xs text-zinc-500 leading-relaxed max-w-[280px]">
+              Chat with a local LLM to dive deep into this swap simulation. 100% private, no API keys.
             </p>
           </div>
           <button
-            id="local-ai-explain-btn"
-            onClick={handleExplain}
-            className="shrink-0 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 text-xs font-medium hover:border-zinc-500 hover:text-white transition-all flex items-center gap-1.5"
+            onClick={startChat}
+            className="shrink-0 px-5 py-2.5 rounded-xl bg-violet-600/10 border border-violet-500/30 text-violet-300 text-xs font-semibold hover:bg-violet-600/20 hover:border-violet-500/50 hover:text-white transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(139,92,246,0.1)]"
           >
             <span className="text-sm">◈</span>
-            Explain
+            Start Chat
           </button>
         </div>
       </div>
@@ -106,90 +164,115 @@ export function LocalAIExplainer({ report, hookAddress, safety }: Props) {
   }
 
   // ── Checking ─────────────────────────────────────────────────────────────────
-  if (state.phase === 'checking') {
+  if (phase === 'checking') {
     return (
-      <div className="border border-zinc-900 rounded-2xl p-5 flex items-center gap-3 bg-[#0a0a0a]">
-        <span className="w-3.5 h-3.5 border-2 border-zinc-700 border-t-zinc-400 rounded-full animate-spin shrink-0" />
-        <span className="text-xs text-zinc-600">Checking Ollama…</span>
+      <div className="border border-zinc-900 rounded-2xl p-6 flex items-center gap-4 bg-[#0a0a0a]">
+        <span className="w-4 h-4 border-2 border-violet-500/30 border-t-violet-400 rounded-full animate-spin shrink-0" />
+        <span className="text-xs font-medium text-zinc-500">Waking up local model…</span>
       </div>
     )
   }
 
-  // ── Unavailable ───────────────────────────────────────────────────────────────
-  if (state.phase === 'unavailable') {
+  // ── Unavailable / Error ───────────────────────────────────────────────────────
+  if (phase === 'unavailable' || phase === 'error') {
     return (
-      <div className="border border-zinc-800 rounded-2xl p-5 flex flex-col gap-3 bg-[#0a0a0a]">
+      <div className="border border-zinc-800 rounded-2xl p-6 flex flex-col gap-4 bg-[#0a0a0a]">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Local AI</span>
-          <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-zinc-800 text-zinc-700 font-mono">offline</span>
+          <span className="text-xs font-semibold text-zinc-300 tracking-wide">Local AI</span>
+          <span className="text-[9px] px-2 py-0.5 rounded-full border border-red-900/50 bg-red-900/10 text-red-400 font-mono">
+            {phase === 'error' ? 'error' : 'offline'}
+          </span>
         </div>
         <p className="text-xs text-zinc-500 leading-relaxed">
-          Ollama is not running locally. To enable plain-English explanations:
+          {phase === 'unavailable' 
+            ? 'Ollama is not responding. To enable local AI analysis:' 
+            : 'Something went wrong during generation:'}
         </p>
-        <code className="text-[10px] font-mono text-zinc-400 bg-zinc-900 rounded-lg px-3 py-2 leading-relaxed block">
-          {state.hint}
+        <code className="text-[10px] font-mono text-zinc-400 bg-zinc-950 border border-zinc-900 rounded-lg px-4 py-3 leading-relaxed block overflow-x-auto whitespace-pre-wrap">
+          {hint}
         </code>
         <button
-          onClick={handleExplain}
-          className="self-start text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors underline underline-offset-2"
+          onClick={startChat}
+          className="self-start text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
         >
-          Retry →
+          Try Again →
         </button>
       </div>
     )
   }
 
-  // ── Generating (streaming) ───────────────────────────────────────────────────
-  if (state.phase === 'generating') {
-    return (
-      <div className="border border-zinc-800 rounded-2xl p-5 flex flex-col gap-3 bg-[#0a0a0a]">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-zinc-500 animate-pulse" />
-          <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Local AI</span>
-          <span className="text-[9px] font-mono text-zinc-700">{state.model}</span>
-        </div>
-        <p className="text-xs text-zinc-300 leading-relaxed min-h-[3rem]">
-          {state.partial || <span className="text-zinc-700">Generating…</span>}
-          <span className="inline-block w-1.5 h-3.5 bg-zinc-600 ml-0.5 animate-pulse align-middle" />
-        </p>
-      </div>
-    )
-  }
+  // ── Chatting ─────────────────────────────────────────────────────────────────
+  // Filter out the hidden system prompt
+  const displayMsgs = messages.filter((m) => m.role !== 'system')
 
-  // ── Done ─────────────────────────────────────────────────────────────────────
-  if (state.phase === 'done') {
-    return (
-      <div className="border border-zinc-800 rounded-2xl p-5 flex flex-col gap-3 bg-[#0a0a0a]">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Local AI</span>
-            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full border border-zinc-800 text-zinc-700">
-              {state.model}
-            </span>
-          </div>
-          <button
-            onClick={handleExplain}
-            className="text-[10px] text-zinc-700 hover:text-zinc-400 transition-colors"
-          >
-            Regenerate
-          </button>
-        </div>
-        <p className="text-xs text-zinc-300 leading-relaxed">{state.text}</p>
-      </div>
-    )
-  }
-
-  // ── Error ─────────────────────────────────────────────────────────────────────
   return (
-    <div className="border border-red-900/40 rounded-2xl p-5 flex flex-col gap-2 bg-[#0a0a0a]">
-      <span className="text-[10px] text-red-500 uppercase tracking-widest">Local AI Error</span>
-      <p className="text-xs text-zinc-500">{state.phase === 'error' ? state.message : ''}</p>
-      <button
-        onClick={handleExplain}
-        className="self-start text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors underline underline-offset-2"
-      >
-        Retry
-      </button>
+    <div className="border border-zinc-800 rounded-2xl flex flex-col bg-[#0a0a0a] shadow-xl overflow-hidden h-[450px]">
+      {/* Header */}
+      <div className="px-5 py-3 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/30">
+        <div className="flex items-center gap-2.5">
+          <div className="relative flex items-center justify-center w-5 h-5">
+            {isGenerating && <span className="absolute inset-0 rounded-full bg-violet-500/20 animate-ping" />}
+            <span className="w-2 h-2 rounded-full bg-violet-400 relative z-10 shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
+          </div>
+          <span className="text-xs font-semibold text-zinc-300">Auditor AI</span>
+          <span className="text-[9px] font-mono text-zinc-500 border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 rounded ml-1">
+            {modelName}
+          </span>
+        </div>
+        <button
+          onClick={() => setPhase('idle')}
+          className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          Close
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+        {displayMsgs.map((msg, i) => {
+          const isUser = msg.role === 'user'
+          return (
+            <div key={i} className={`flex flex-col gap-1.5 ${isUser ? 'items-end' : 'items-start'}`}>
+              <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-wider px-1">
+                {isUser ? 'You' : 'AI'}
+              </span>
+              <div 
+                className={`text-xs leading-relaxed max-w-[90%] p-3.5 rounded-2xl whitespace-pre-wrap ${
+                  isUser 
+                    ? 'bg-violet-600/20 border border-violet-500/30 text-violet-100 rounded-tr-sm' 
+                    : 'bg-zinc-900/80 border border-zinc-800 text-zinc-300 rounded-tl-sm'
+                }`}
+              >
+                {msg.content || (isGenerating && i === displayMsgs.length - 1 ? <span className="animate-pulse">...</span> : '')}
+              </div>
+            </div>
+          )
+        })}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input Form */}
+      <div className="p-4 bg-zinc-900/40 border-t border-zinc-800/50">
+        <form onSubmit={handleSend} className="relative flex items-center">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={isGenerating}
+            placeholder="Ask about routing, code, or risks..."
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-4 pr-12 py-3 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all disabled:opacity-50"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || isGenerating}
+            className="absolute right-2 p-1.5 rounded-lg bg-violet-600/20 text-violet-400 hover:bg-violet-600/40 hover:text-violet-300 disabled:opacity-30 disabled:hover:bg-violet-600/20 transition-all"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
