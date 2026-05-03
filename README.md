@@ -24,9 +24,10 @@ HookLens is a Uniswap v4 hook inspector and swap simulation workspace for develo
 | Uniswap quoting | Trading API through `/hooklens-uniswap/v1/*` |
 | Local quote proxy | Vite middleware in `vite.config.ts` |
 | Vercel quote proxy | `api/uniswap/[...path].js` |
+| Docker server | `server.js` serves `dist` and proxies Uniswap/Ollama |
 | Hook data | The Graph gateway subgraphs |
 | Source verification | Sourcify |
-| Local AI | Ollama REST API at `localhost:11434` |
+| AI assistant | Ollama through `/hooklens-ollama/*` |
 
 ## Environment
 
@@ -35,9 +36,10 @@ Create a `.env` file in the repo root:
 ```env
 UNISWAP_API_KEY=your_uniswap_trading_api_key
 VITE_THEGRAPH_API_KEY=your_thegraph_api_key
+OLLAMA_HOST=http://localhost:11434
 ```
 
-`UNISWAP_API_KEY` is read by the local Vite proxy and the Vercel serverless proxy, so it does not need to be exposed in the browser bundle. `VITE_UNISWAP_API_KEY` is still accepted as a legacy fallback, but `UNISWAP_API_KEY` is preferred.
+`UNISWAP_API_KEY` is read by the local Vite proxy, Docker server, or Vercel serverless proxy, so it does not need to be exposed in the browser bundle. `OLLAMA_HOST` is read by the local Vite proxy or Docker server; the browser talks to `/hooklens-ollama/*`.
 
 Optional debug flags:
 
@@ -55,7 +57,34 @@ npm run dev
 
 The app starts with Vite. Quote requests go to `/hooklens-uniswap/v1/quote`, then the local proxy forwards them to `https://trade-api.gateway.uniswap.org`.
 
-## Local Ollama Assistant
+## Docker Demo With Ollama
+
+Docker Compose runs the web app and Ollama together. This is the recommended hackathon demo path if you need the assistant available.
+
+```bash
+cp .env.example .env
+# Fill UNISWAP_API_KEY and VITE_THEGRAPH_API_KEY
+
+docker compose up -d ollama
+docker compose --profile setup run --rm ollama-pull
+docker compose up --build web
+```
+
+Open:
+
+```txt
+http://localhost:8080
+```
+
+The default model is `llama3.2`. Override it when pulling:
+
+```bash
+OLLAMA_MODEL=mistral docker compose --profile setup run --rm ollama-pull
+```
+
+The Docker web container serves the built app, proxies `/hooklens-uniswap/*` to the Uniswap Trading API, and proxies `/hooklens-ollama/*` to the Ollama container.
+
+## Local Ollama Assistant Without Docker
 
 The assistant is optional. Start Ollama and pull at least one supported model:
 
@@ -72,6 +101,7 @@ The app talks to Ollama with `fetch`; no npm Ollama package is required.
 npm run lint
 npm run build
 npm run preview
+npm run start
 ```
 
 ## Main Paths

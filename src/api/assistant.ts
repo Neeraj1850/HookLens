@@ -17,7 +17,7 @@ export class OllamaNoModelError extends Error {
   }
 }
 
-const OLLAMA_HOST = 'http://localhost:11434'
+const OLLAMA_HOST = String(import.meta.env.VITE_OLLAMA_PROXY_URL ?? '/hooklens-ollama').replace(/\/$/, '')
 
 const PREFERRED_MODELS = ['llama3.2', 'llama3', 'phi3', 'mistral', 'gemma2']
 
