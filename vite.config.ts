@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 
 function parseMaybeJson(text: string): unknown {
   try {
@@ -9,7 +9,7 @@ function parseMaybeJson(text: string): unknown {
   }
 }
 
-function localTradeApiProxy(): Plugin {
+function localTradeApiProxy(apiKey: string): Plugin {
   return {
     name: 'hooklens-local-trade-api-proxy',
     configureServer(server) {
@@ -27,7 +27,10 @@ function localTradeApiProxy(): Plugin {
               headers: {
                 'content-type': String(req.headers['content-type'] ?? 'application/json'),
                 accept: String(req.headers.accept ?? 'application/json'),
-                'x-api-key': String(req.headers['x-api-key'] ?? ''),
+                'x-api-key': apiKey || String(req.headers['x-api-key'] ?? ''),
+                'x-universal-router-version': String(req.headers['x-universal-router-version'] ?? '2.0'),
+                'x-erc20eth-enabled': String(req.headers['x-erc20eth-enabled'] ?? 'false'),
+                'x-permit2-disabled': String(req.headers['x-permit2-disabled'] ?? 'false'),
               },
               body: req.method === 'GET' || req.method === 'HEAD' ? undefined : body,
             })
@@ -65,7 +68,11 @@ function localTradeApiProxy(): Plugin {
   }
 }
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), localTradeApiProxy()],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const apiKey = env.UNISWAP_API_KEY || env.VITE_UNISWAP_API_KEY || ''
+
+  return {
+    plugins: [react(), localTradeApiProxy(apiKey)],
+  }
 })

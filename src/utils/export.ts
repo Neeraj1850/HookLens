@@ -1,5 +1,4 @@
 import type { FullHookInspection, PoolDiscovery } from '../types/hook'
-import type { HookQuoteComparison } from '../types/uniswap'
 
 export function generateShareUrl(address: string, chainId: number): string {
   const base = typeof window === 'undefined' ? '' : window.location.origin
@@ -9,7 +8,6 @@ export function generateShareUrl(address: string, chainId: number): string {
 export function exportInspectionJSON(
   inspection: FullHookInspection,
   poolDiscovery?: PoolDiscovery | null,
-  quoteComparison?: HookQuoteComparison | null,
 ): void {
   const data = {
     exportedAt: new Date().toISOString(),
@@ -37,7 +35,6 @@ export function exportInspectionJSON(
           verifiedOnSourcify: inspection.safety.source.verification.isVerified,
         }
       : null,
-    swapImpact: inspection.swapImpact ?? quoteComparison ?? null,
     pools: poolDiscovery ?? inspection.pools ?? null,
   }
 

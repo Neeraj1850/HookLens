@@ -10,8 +10,6 @@ import { copyToClipboard, truncateAddress } from '../utils/address'
 import { formatUSD } from '../utils/format'
 import { classifyHook, decodeHookFlags } from '../utils/flagDecoder'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function formatFee(feeTier: number): string {
   if (!Number.isFinite(feeTier) || feeTier === 0) return 'custom'
   return `${(feeTier / 10000).toFixed(2)}%`
@@ -54,13 +52,9 @@ const CATEGORY_COLORS: Record<HookCategory, string> = {
 type SortKey = 'txns' | 'volume' | 'pools' | 'address'
 type ActivityFilter = 'all' | 'active' | 'inactive'
 
-// Chains that have a configured subgraph
 const CHAIN_OPTIONS = SUPPORTED_CHAINS.filter((c) => CONFIGURED_CHAIN_IDS.includes(c.id))
 
-// All hook categories as dropdown options
 const CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS) as [HookCategory, string][]
-
-// ─── Dropdown Component ───────────────────────────────────────────────────────
 
 interface DropdownProps {
   label: string
@@ -88,7 +82,6 @@ function Dropdown({ label, value, options, onChange }: DropdownProps) {
   )
 }
 
-// Multi-select dropdown
 interface MultiDropdownProps {
   label: string
   values: string[]
@@ -164,8 +157,6 @@ function MultiDropdown({ label, values, options, onChange, placeholder = 'All' }
   )
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="border border-zinc-900 rounded-xl p-4 flex flex-col gap-1">
@@ -175,8 +166,6 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
     </div>
   )
 }
-
-// ─── Hook Row ─────────────────────────────────────────────────────────────────
 
 type EnrichedHook = HookAddressCandidate & { category: HookCategory }
 
@@ -273,15 +262,11 @@ function HookRow({ hook }: { hook: EnrichedHook }) {
   )
 }
 
-// ─── Dashboard ────────────────────────────────────────────────────────────────
-
 export function Dashboard() {
-  // Chain selection drives which subgraphs are queried
   const [selectedChainIds, setSelectedChainIds] = useState<number[]>([])
 
   const { discovery, isLoading, error, fetchHooks } = useHookAddressDiscovery(selectedChainIds)
 
-  // Client-side filter state
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
@@ -289,12 +274,10 @@ export function Dashboard() {
 
   useEffect(() => { document.title = 'Dashboard — HookLens' }, [])
 
-  // Enrich hooks with decoded category
   const enrichedHooks = useMemo<EnrichedHook[]>(() =>
     (discovery?.hooks ?? []).map((h) => ({ ...h, category: getCategory(h.address) })),
   [discovery])
 
-  // Filtered + sorted list
   const filteredHooks = useMemo<EnrichedHook[]>(() => {
     let result = [...enrichedHooks]
 
@@ -327,19 +310,16 @@ export function Dashboard() {
 
   const hasClientFilter = searchQuery || selectedCategories.length > 0 || activityFilter !== 'all'
 
-  // When chain selection changes, refetch
   const handleChainChange = useCallback((vals: string[]) => {
     const ids = vals.map(Number)
     setSelectedChainIds(ids)
     void fetchHooks(ids)
   }, [fetchHooks])
 
-  // Aggregate stats on filtered set
   const totalTxns = filteredHooks.reduce((s, h) => s + h.txCount, 0)
   const totalVolume = filteredHooks.reduce((s, h) => s + h.volumeUSD, 0)
   const activeCount = filteredHooks.filter((h) => h.txCount > 0 || h.volumeUSD > 0).length
 
-  // Configured chain options for selector
   const chainOptions = CHAIN_OPTIONS.map((c) => ({ value: String(c.id), label: c.name }))
   const categoryOptions = CATEGORY_OPTIONS.map(([v, l]) => ({ value: v, label: l }))
 
@@ -347,7 +327,6 @@ export function Dashboard() {
     <Layout>
       <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col gap-5">
 
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
@@ -375,7 +354,6 @@ export function Dashboard() {
           </button>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard label="Hooks Shown" value={filteredHooks.length.toString()} sub={`of ${discovery?.totalFound ?? '—'} total`} />
           <StatCard label="Active Hooks" value={activeCount.toString()} sub="with txns or volume" />
@@ -383,9 +361,7 @@ export function Dashboard() {
           <StatCard label="Total Volume" value={totalVolume > 0 ? formatUSD(totalVolume) : '—'} />
         </div>
 
-        {/* Filter bar */}
         <div className="border border-zinc-900 rounded-xl p-5 flex flex-col gap-5 bg-[#0a0a0a]">
-          {/* Search */}
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-sm select-none">⌕</span>
             <input
@@ -400,9 +376,7 @@ export function Dashboard() {
             )}
           </div>
 
-          {/* Dropdowns row */}
           <div className="flex flex-wrap gap-4 items-end">
-            {/* Chain multi-select — drives server-side refetch */}
             <MultiDropdown
               label={`Chain${CHAIN_OPTIONS.length > 0 ? ` (${CHAIN_OPTIONS.length} configured)` : ''}`}
               values={selectedChainIds.map(String)}
@@ -411,7 +385,6 @@ export function Dashboard() {
               placeholder="All chains"
             />
 
-            {/* Hook type multi-select — client-side filter */}
             <MultiDropdown
               label="Hook Type"
               values={selectedCategories}
@@ -420,7 +393,6 @@ export function Dashboard() {
               placeholder="All types"
             />
 
-            {/* Activity dropdown */}
             <Dropdown
               label="Activity"
               value={activityFilter}
@@ -432,7 +404,6 @@ export function Dashboard() {
               onChange={(v) => setActivityFilter(v as ActivityFilter)}
             />
 
-            {/* Sort dropdown */}
             <Dropdown
               label="Sort By"
               value={sortKey}
@@ -445,7 +416,6 @@ export function Dashboard() {
               onChange={(v) => setSortKey(v as SortKey)}
             />
 
-            {/* Clear */}
             {hasClientFilter && (
               <button
                 onClick={() => { setSearchQuery(''); setSelectedCategories([]); setActivityFilter('all') }}
@@ -456,7 +426,6 @@ export function Dashboard() {
             )}
           </div>
 
-          {/* Chain warning if no subgraph configured for a chain */}
           {SUPPORTED_CHAINS.filter((c) => !UNISWAP_V4_SUBGRAPH_IDS_BY_CHAIN[c.id]).length > 0 && (
             <p className="text-[10px] text-zinc-700 border-t border-zinc-900/60 pt-3">
               {SUPPORTED_CHAINS.filter((c) => !UNISWAP_V4_SUBGRAPH_IDS_BY_CHAIN[c.id]).map((c) => c.name).join(', ')} — no subgraph configured.{' '}
@@ -465,7 +434,6 @@ export function Dashboard() {
           )}
         </div>
 
-        {/* Hook list */}
         <div className="flex flex-col gap-2">
           {isLoading && <LoadingSkeleton className="h-24" lines={4} />}
 
@@ -508,7 +476,6 @@ export function Dashboard() {
           ))}
         </div>
 
-        {/* Partial errors */}
         {(discovery?.errors.length ?? 0) > 0 && (
           <div className="border border-zinc-900 rounded-xl px-4 py-3 flex flex-col gap-1.5">
             <p className="text-[10px] text-zinc-600 uppercase tracking-widest">Partial Query Errors</p>

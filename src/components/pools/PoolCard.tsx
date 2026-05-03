@@ -31,7 +31,6 @@ function formatVolume(usd: string): string {
   return formatUSD(n)
 }
 
-/** Pool bucket for the market comparison section */
 function PoolBucket({
   label,
   accentClass,
@@ -80,21 +79,30 @@ export function PoolCard({ pool, chainId }: PoolCardProps) {
   const setSimTokensFromPool = useHookStore((state) => state.setSimTokensFromPool)
   const [expanded, setExpanded] = useState(false)
   const [comparison, setComparison] = useState<PoolMarketComparison | null>(null)
-  const [loadingComp, setLoadingComp] = useState(false)
 
   const quoteChainId = pool.chainId || chainId
+  const loadingComp = expanded && !comparison
 
-  // Fetch market comparison when expanded
   useEffect(() => {
     if (!expanded || comparison) return
     let cancelled = false
-    setLoadingComp(true)
     comparePoolMarket(pool, quoteChainId).then((result) => {
       if (!cancelled) {
         setComparison(result)
-        setLoadingComp(false)
       }
-    }).catch(() => { if (!cancelled) setLoadingComp(false) })
+    }).catch(() => {
+      if (!cancelled) {
+        setComparison({
+          hookPools: [pool],
+          noHookPools: [],
+          totalHookPools: 1,
+          totalNoHookPools: 0,
+          source: 'none',
+          error: 'Pool market comparison failed',
+          fetchedAt: Date.now(),
+        })
+      }
+    })
     return () => { cancelled = true }
   }, [expanded, pool, quoteChainId, comparison])
 

@@ -1,21 +1,5 @@
-/**
- * LocalAI — Ollama REST integration for plain-English swap report explanations.
- *
- * Connects to a locally running Ollama server (http://localhost:11434)
- * using its native JSON REST API — no npm package required, just fetch.
- * No API key needed. Works with any model the user has pulled:
- *   ollama pull llama3.2        (recommended, ~2GB)
- *   ollama pull phi3            (lightweight, ~2.3GB)
- *   ollama pull mistral         (balanced, ~4GB)
- *
- * In production on Vercel, Ollama is not available — the caller receives
- * an OllamaUnavailableError and should display a graceful fallback.
- */
-
 import type { AgentReport } from './agentEngine'
 import type { SafetyAnalysis } from '../types/hook'
-
-// ─── Error types ──────────────────────────────────────────────────────────────
 
 export class OllamaUnavailableError extends Error {
   constructor() {
@@ -33,14 +17,9 @@ export class OllamaNoModelError extends Error {
   }
 }
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-
 const OLLAMA_HOST = 'http://localhost:11434'
 
-/** Preferred model order — first available is used */
 const PREFERRED_MODELS = ['llama3.2', 'llama3', 'phi3', 'mistral', 'gemma2']
-
-// ─── Ollama REST types ────────────────────────────────────────────────────────
 
 interface OllamaModel {
   name: string
@@ -61,13 +40,10 @@ interface OllamaChatChunk {
   done: boolean
 }
 
-// ─── Prompt builder ───────────────────────────────────────────────────────────
-
 export function buildSystemContext(report: AgentReport, hookAddress: string | null, safety: SafetyAnalysis | null): string {
   const decision = report.decision
   const confidence = report.confidence
   
-  // Extract detailed routing info
   const hookOutput = report.hookScore ? `${report.hookScore.outputAmount.toPrecision(5)}` : 'N/A'
   const hookGas = report.hookScore ? `$${report.hookScore.gasFeeUSD.toFixed(2)}` : 'N/A'
   const hookRouting = report.hookScore?.routingType ?? 'N/A'
@@ -81,14 +57,11 @@ export function buildSystemContext(report: AgentReport, hookAddress: string | nu
   const riskLines = report.warnings.join('\n')
   const rationaleLines = report.rationale.join('\n')
 
-  // Extract sourcify verified code if available
   let sourceCodeContext = 'Sourcify Source Code: Not available or unverified.'
   if (safety?.source.verification.isVerified && safety.source.sources) {
-    // Try to find a file containing 'Hook' or just take the first file's content
     const files = Object.entries(safety.source.sources)
     const hookFile = files.find(([name]) => name.toLowerCase().includes('hook')) || files[0]
     if (hookFile) {
-      // Truncate to ~1500 chars to avoid blowing up local model context window
       const code = hookFile[1].content.slice(0, 1500)
       sourceCodeContext = `Verified Source Code Snippet (${hookFile[0]}):\n\`\`\`solidity\n${code}...\n\`\`\``
     }
@@ -121,8 +94,6 @@ INSTRUCTIONS FOR YOUR RESPONSE:
 5. Be incredibly concise. Do not repeat words. Get straight to the technical point.`
 }
 
-// ─── Model detection via REST ─────────────────────────────────────────────────
-
 async function detectModel(): Promise<string> {
   let data: OllamaListResponse
   try {
@@ -147,21 +118,11 @@ async function detectModel(): Promise<string> {
   throw new OllamaNoModelError(PREFERRED_MODELS[0]!)
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
-
 export interface ExplainResult {
   text: string
   model: string
 }
 
-/**
- * Sends a conversation to the Ollama Chat API.
- * Streams the NDJSON response token-by-token.
- *
- * @param messages    Full history of ChatMessages (system + user + assistant)
- * @param onChunk     Called with each streamed text token as it arrives
- * @returns           Final complete text + model name used
- */
 export async function sendChatMessage(
   messages: ChatMessage[],
   onChunk: (chunk: string) => void,
@@ -190,7 +151,6 @@ export async function sendChatMessage(
 
   if (!res.ok || !res.body) throw new OllamaUnavailableError()
 
-  // Stream NDJSON — each line is a JSON object { message: { content }, done }
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let fullText = ''
@@ -215,7 +175,7 @@ export async function sendChatMessage(
         }
         if (chunk.done) break
       } catch {
-        // malformed line — skip
+        continue
       }
     }
   }
@@ -223,9 +183,6 @@ export async function sendChatMessage(
   return { text: fullText.trim(), model }
 }
 
-/**
- * Quick connectivity check — resolves true if Ollama is reachable.
- */
 export async function isOllamaAvailable(): Promise<boolean> {
   try {
     const res = await fetch(`${OLLAMA_HOST}/api/tags`, {

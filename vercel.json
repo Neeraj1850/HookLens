@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/hooklens-uniswap/:path*",
-      "destination": "https://trade-api.gateway.uniswap.org/:path*"
+      "destination": "/api/uniswap/:path*"
     },
     {
       "source": "/(.*)",

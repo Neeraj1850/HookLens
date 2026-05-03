@@ -19,7 +19,11 @@ interface Props {
 
 type ChatPhase = 'idle' | 'checking' | 'unavailable' | 'chatting' | 'error'
 
-export function AssistantChat({ report, hookAddress, safety }: Props) {
+export function AssistantChat(props: Props) {
+  return <AssistantChatSession key={props.report.completedAt} {...props} />
+}
+
+function AssistantChatSession({ report, hookAddress, safety }: Props) {
   const [phase, setPhase] = useState<ChatPhase>('idle')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -29,20 +33,39 @@ export function AssistantChat({ report, hookAddress, safety }: Props) {
 
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom of chat
   useEffect(() => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages])
 
-  // Reset when report changes (new simulation run)
-  useEffect(() => {
-    setPhase('idle')
-    setMessages([])
-    setInput('')
-    setIsGenerating(false)
-  }, [report.completedAt])
+  const appendAssistantChunk = useCallback((chunk: string) => {
+    setMessages((prev) => {
+      const lastIndex = prev.length - 1
+      const last = prev[lastIndex]
+
+      if (!last || last.role !== 'assistant') return prev
+
+      return prev.map((msg, index) =>
+        index === lastIndex
+          ? { ...msg, content: msg.content + chunk }
+          : msg,
+      )
+    })
+  }, [])
+
+  const handleError = useCallback((err: unknown) => {
+    if (err instanceof OllamaUnavailableError) {
+      setHint('Start Ollama: ollama serve — then pull a model: ollama pull llama3.2')
+      setPhase('unavailable')
+    } else if (err instanceof OllamaNoModelError) {
+      setHint(err.message)
+      setPhase('unavailable')
+    } else {
+      setHint(err instanceof Error ? err.message : 'Local AI chat failed')
+      setPhase('error')
+    }
+  }, [])
 
   const startChat = useCallback(async () => {
     setPhase('checking')
@@ -68,28 +91,18 @@ export function AssistantChat({ report, hookAddress, safety }: Props) {
       content: 'Explain this swap simulation report and verify the hook contract safety.',
     }
 
-    // Initialize state with system and user msg, plus empty assistant msg for streaming
     const initMsgs = [sysMsg, firstMsg]
     setMessages([...initMsgs, { role: 'assistant', content: '' }])
 
     try {
-      const result = await sendChatMessage(initMsgs, (chunk) => {
-        setMessages((prev) => {
-          const newMsgs = [...prev]
-          const last = newMsgs[newMsgs.length - 1]
-          if (last && last.role === 'assistant') {
-            last.content += chunk
-          }
-          return newMsgs
-        })
-      })
+      const result = await sendChatMessage(initMsgs, appendAssistantChunk)
       setModelName(result.model)
     } catch (err) {
       handleError(err)
     } finally {
       setIsGenerating(false)
     }
-  }, [report, hookAddress, safety])
+  }, [report, hookAddress, safety, appendAssistantChunk, handleError])
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,16 +116,7 @@ export function AssistantChat({ report, hookAddress, safety }: Props) {
     setIsGenerating(true)
 
     try {
-      const result = await sendChatMessage(newMsgs, (chunk) => {
-        setMessages((prev) => {
-          const updated = [...prev]
-          const last = updated[updated.length - 1]
-          if (last && last.role === 'assistant') {
-            last.content += chunk
-          }
-          return updated
-        })
-      })
+      const result = await sendChatMessage(newMsgs, appendAssistantChunk)
       setModelName(result.model)
     } catch (err) {
       handleError(err)
@@ -121,20 +125,6 @@ export function AssistantChat({ report, hookAddress, safety }: Props) {
     }
   }
 
-  const handleError = (err: unknown) => {
-    if (err instanceof OllamaUnavailableError) {
-      setHint('Start Ollama: ollama serve — then pull a model: ollama pull llama3.2')
-      setPhase('unavailable')
-    } else if (err instanceof OllamaNoModelError) {
-      setHint(err.message)
-      setPhase('unavailable')
-    } else {
-      setHint(err instanceof Error ? err.message : 'Local AI chat failed')
-      setPhase('error')
-    }
-  }
-
-  // ── Idle ────────────────────────────────────────────────────────────────────
   if (phase === 'idle') {
     return (
       <div className="border border-zinc-900 rounded-2xl p-6 flex flex-col gap-4 bg-gradient-to-br from-[#0a0a0a] to-[#111] shadow-2xl overflow-hidden relative">
@@ -163,7 +153,6 @@ export function AssistantChat({ report, hookAddress, safety }: Props) {
     )
   }
 
-  // ── Checking ─────────────────────────────────────────────────────────────────
   if (phase === 'checking') {
     return (
       <div className="border border-zinc-900 rounded-2xl p-6 flex items-center gap-4 bg-[#0a0a0a]">
@@ -173,7 +162,6 @@ export function AssistantChat({ report, hookAddress, safety }: Props) {
     )
   }
 
-  // ── Unavailable / Error ───────────────────────────────────────────────────────
   if (phase === 'unavailable' || phase === 'error') {
     return (
       <div className="border border-zinc-800 rounded-2xl p-6 flex flex-col gap-4 bg-[#0a0a0a]">
@@ -201,13 +189,10 @@ export function AssistantChat({ report, hookAddress, safety }: Props) {
     )
   }
 
-  // ── Chatting ─────────────────────────────────────────────────────────────────
-  // Filter out the hidden system prompt
   const displayMsgs = messages.filter((m) => m.role !== 'system')
 
   return (
     <div className="border border-zinc-800 rounded-2xl flex flex-col bg-[#0a0a0a] shadow-xl overflow-hidden h-[600px]">
-      {/* Header */}
       <div className="px-5 py-3 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/30">
         <div className="flex items-center gap-2.5">
           <div className="relative flex items-center justify-center w-5 h-5">
@@ -250,7 +235,6 @@ export function AssistantChat({ report, hookAddress, safety }: Props) {
         <div ref={chatEndRef} />
       </div>
 
-      {/* Input Form */}
       <div className="p-4 bg-zinc-900/40 border-t border-zinc-800/50">
         <form onSubmit={handleSend} className="relative flex items-center">
           <input

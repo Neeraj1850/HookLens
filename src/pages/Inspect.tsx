@@ -23,7 +23,6 @@ function badgeForScore(score: number): 'active' | 'muted' {
   return score >= 7 ? 'active' : 'muted'
 }
 
-/** Numbered step indicator for the sidebar guide */
 function StepItem({ num, text }: { num: number; text: string }) {
   return (
     <div className="flex items-start gap-3">
@@ -65,7 +64,6 @@ export function Inspect() {
 
   return (
     <Layout>
-      {/* Hook header bar */}
       <div className="border-b border-[#1c1c1c] bg-[#0a0a0a]">
         <div className="max-w-5xl mx-auto px-6 py-5">
           <div className="flex items-start justify-between gap-6">
@@ -101,7 +99,6 @@ export function Inspect() {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-6">
-        {/* Address input for switching hooks */}
         <div className="mb-6">
           <AddressInput />
         </div>
@@ -125,7 +122,6 @@ export function Inspect() {
         {currentInspection && decoded && !isDecoding && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
 
-            {/* Main panels */}
             <div className="flex flex-col gap-3">
               <AccordionSection
                 id="callbacks"
@@ -157,9 +153,7 @@ export function Inspect() {
               </AccordionSection>
             </div>
 
-            {/* Sticky sidebar */}
             <aside className="flex flex-col gap-3 lg:sticky lg:top-20 lg:self-start">
-              {/* Quick stats */}
               <Card>
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-3">
                   Quick Stats
@@ -192,7 +186,6 @@ export function Inspect() {
                 </div>
               </Card>
 
-              {/* Workflow guide */}
               <Card>
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-3">
                   Suggested Workflow
@@ -217,7 +210,6 @@ export function Inspect() {
                 </div>
               </Card>
 
-              {/* Data sources */}
               <Card>
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-3">
                   Data Sources

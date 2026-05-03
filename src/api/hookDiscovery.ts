@@ -4,7 +4,6 @@ import type { HookAddressCandidate, HookAddressDiscovery } from '../types/hook'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
-// 7-day and 30-day epoch timestamps (computed once per module load)
 const SINCE_7D = Math.floor(Date.now() / 1000) - 7 * 86400
 const SINCE_30D = Math.floor(Date.now() / 1000) - 30 * 86400
 
@@ -58,7 +57,6 @@ interface RawPool {
 export async function discoverAllHookAddresses(
   chainIds?: number[],
 ): Promise<HookAddressDiscovery> {
-  // Filter to chains that have a subgraph configured; also apply caller's selection if provided
   const configuredChains = SUPPORTED_CHAINS.filter(
     (chain) =>
       UNISWAP_V4_SUBGRAPH_IDS_BY_CHAIN[chain.id] &&
@@ -205,7 +203,6 @@ function summarizeHookPools(
     const feeTier = Number(pool.feeTier ?? 0)
     const pair = `${pool.token0?.symbol ?? '???'}/${pool.token1?.symbol ?? '???'}`
 
-    // Aggregate poolDayData windows
     const txCount7d = (pool.poolDayData7d ?? []).reduce(
       (sum, d) => sum + Number(d.txCount ?? 0), 0,
     )
@@ -253,7 +250,6 @@ function summarizeHookPools(
     current.volume7dUSD += volume7dUSD
     current.volume30dUSD += volume30dUSD
     current.recentlyActive = current.recentlyActive || txCount7d > 0
-    // Track the busiest pool pair as the representative for this hook
     if (addTx > 0 && txCount > (current.txCount - addTx)) {
       current.topPair = pair
       current.topFeeTier = feeTier
@@ -267,8 +263,6 @@ function summarizeHookPools(
 function getGraphEndpoint(subgraphId: string): string {
   const apiKey = String(import.meta.env.VITE_THEGRAPH_API_KEY ?? '').trim()
   if (!apiKey) {
-    // The public gateway endpoint no longer accepts unauthenticated requests.
-    // Add VITE_THEGRAPH_API_KEY to your .env file. Get a key at https://thegraph.com/studio
     throw new Error(
       'VITE_THEGRAPH_API_KEY is not set. Add it to your .env file to query the subgraph.',
     )
@@ -277,12 +271,7 @@ function getGraphEndpoint(subgraphId: string): string {
 }
 
 function debugSubgraph(label: string, payload: unknown): void {
-  if (
-    import.meta.env.DEV !== true &&
-    import.meta.env.VITE_HOOKLENS_DEBUG_SUBGRAPH !== 'true'
-  ) {
-    return
-  }
+  if (import.meta.env.VITE_HOOKLENS_DEBUG_SUBGRAPH !== 'true') return
   console.info(`[HookLens subgraph] ${label}`, payload)
 }
 

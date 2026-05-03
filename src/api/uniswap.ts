@@ -1,19 +1,3 @@
-/**
- * Uniswap Trading API + SDK Integration
- *
- * Uses @uniswap/sdk-core and @uniswap/v4-sdk as the canonical source of truth for:
- *   - Token addresses (via Token class, WETH9 constant)
- *   - Token decimals (from Token instances, never hardcoded separately)
- *   - Native ETH address (via Ether.onChain + toAddress)
- *   - ChainId enum (no magic numbers)
- *
- * API docs: https://developers.uniswap.org/docs/api-reference/aggregator_quote
- * v4 SDK quoting: https://developers.uniswap.org/docs/sdks/v4/guides/swapping/quoting
- * v4 deployments: https://developers.uniswap.org/docs/protocols/v4/deployments
- *
- * Skills: swap-integration (uniswap/uniswap-trading), swap-planner (uniswap/uniswap-driver)
- */
-
 import { ChainId, Ether, Token, WETH9, type Currency } from '@uniswap/sdk-core'
 import { toAddress } from '@uniswap/v4-sdk'
 import {
@@ -23,15 +7,8 @@ import {
   type QuoteResponse,
 } from '../types/uniswap'
 
-// ─── Re-export SDK Currency type for consumers ────────────────────────────────
-
 export type { Currency }
 
-// ─── Well-known token catalog sourced from @uniswap/sdk-core ─────────────────
-// Using Token class ensures addresses, decimals and chainIds are always correct.
-// WETH9 constant is the canonical source for Wrapped Ether addresses.
-
-/** USDC on Ethereum Mainnet */
 const USDC_MAINNET = new Token(
   ChainId.MAINNET,
   '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
@@ -40,7 +17,6 @@ const USDC_MAINNET = new Token(
   'USD Coin',
 )
 
-/** DAI on Ethereum Mainnet */
 const DAI_MAINNET = new Token(
   ChainId.MAINNET,
   '0x6B175474E89094C44Da98b954EedeAC495271d0F',
@@ -49,7 +25,6 @@ const DAI_MAINNET = new Token(
   'Dai Stablecoin',
 )
 
-/** USDT on Ethereum Mainnet */
 const USDT_MAINNET = new Token(
   ChainId.MAINNET,
   '0xdAC17F958D2ee523a2206206994597C13D831ec7',
@@ -58,7 +33,6 @@ const USDT_MAINNET = new Token(
   'Tether USD',
 )
 
-/** USDC on Base */
 const USDC_BASE = new Token(
   ChainId.BASE,
   '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -67,7 +41,6 @@ const USDC_BASE = new Token(
   'USD Coin',
 )
 
-/** DAI on Base */
 const DAI_BASE = new Token(
   ChainId.BASE,
   '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb',
@@ -76,7 +49,6 @@ const DAI_BASE = new Token(
   'Dai Stablecoin',
 )
 
-/** USDbC (Bridged USDC) on Base */
 const USDBC_BASE = new Token(
   ChainId.BASE,
   '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA',
@@ -85,7 +57,6 @@ const USDBC_BASE = new Token(
   'USD Base Coin',
 )
 
-/** USDC on Arbitrum One */
 const USDC_ARBITRUM = new Token(
   ChainId.ARBITRUM_ONE,
   '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
@@ -93,10 +64,6 @@ const USDC_ARBITRUM = new Token(
   'USDC',
   'USD Coin',
 )
-
-// ─── Token catalog per chain ──────────────────────────────────────────────────
-// Native ETH uses Ether.onChain() — toAddress() returns 0x000...000 as expected by the API.
-// WETH9 from sdk-core gives the correct wrapped ETH address per chain.
 
 export const TOKENS_BY_CHAIN: Record<number, Currency[]> = {
   [ChainId.BASE]: [
@@ -120,78 +87,28 @@ export const TOKENS_BY_CHAIN: Record<number, Currency[]> = {
   ],
 }
 
-/** Return the token list for a chain, defaulting to Base if the chain is unknown. */
 export function getTokensForChain(chainId: number): Currency[] {
   return TOKENS_BY_CHAIN[chainId] ?? TOKENS_BY_CHAIN[ChainId.BASE]!
 }
 
-// ─── Currency → API-facing address ───────────────────────────────────────────
-
-/**
- * Convert an SDK Currency to the address string expected by the Uniswap Trading API.
- * Native ETH → "0x0000000000000000000000000000000000000000" (per API docs).
- * ERC-20 tokens → checksummed address from the Token instance.
- *
- * Uses toAddress() from @uniswap/v4-sdk which handles both isNative and isToken cases.
- */
 export function currencyToApiAddress(currency: Currency): string {
   return toAddress(currency)
 }
 
-/**
- * Get the decimal precision of a currency for amount calculations.
- * Uses currency.decimals directly from the SDK — no separate lookup needed.
- */
-export function currencyDecimals(currency: Currency): number {
-  return currency.decimals
-}
-
-/**
- * Get a display symbol for a currency (e.g. "ETH", "USDC").
- */
 export function currencySymbol(currency: Currency): string {
   return currency.symbol ?? '???'
 }
-
-// ─── v4 Quoter contract addresses (from official deployment docs) ─────────────
-// Source: https://developers.uniswap.org/docs/protocols/v4/deployments
-// These are used for onchain static-call quoting via the v4 Quoter contract.
-
-export const V4_QUOTER_ADDRESSES: Record<number, string> = {
-  [ChainId.MAINNET]:      '0x52f0e24d1c21c8a0cb1e5a5dd6198556bd9e1203',
-  [ChainId.BASE]:         '0x0d5e0f971ed27fbff6c2837bf31316121532048d',
-  [ChainId.ARBITRUM_ONE]: '0x3972c00f7ed4885e145823eb7c655375d275a1c5',
-  10:                     '0x1f3131a13296fb91c90870043742c3cdbff1a8d7', // Optimism
-  137:                    '0xb3d5c3dfc3a7aebff71895a7191796bffc2c81b9', // Polygon
-  130:                    '0x333e3c607b141b18ff6de9f258db6e77fe7491e0', // Unichain
-}
-
-// ─── Environment helpers ──────────────────────────────────────────────────────
 
 function getApiKey(): string {
   return String(import.meta.env.VITE_UNISWAP_API_KEY ?? '').trim()
 }
 
-/**
- * Resolves the Trading API base URL.
- *
- * - Always uses the /hooklens-uniswap server-side proxy path, which is handled by:
- *   - The Vite dev server plugin (vite.config.ts) during local development
- *   - Vercel rewrites (vercel.json) in production: /hooklens-uniswap/* → trade-api.gateway.uniswap.org/*
- * - VITE_UNISWAP_PROXY_URL overrides this for custom proxy deployments.
- *
- * This avoids CORS: the browser always talks to the same origin, and the proxy
- * forwards the request server-side with the API key in the header.
- */
 function getApiBase(): string {
   const configuredProxy = String(import.meta.env.VITE_UNISWAP_PROXY_URL ?? '').trim()
   if (configuredProxy) return configuredProxy.replace(/\/$/, '')
   return '/hooklens-uniswap/v1'
 }
 
-// ─── Proxy envelope detection ─────────────────────────────────────────────────
-
-/** Shape returned by the Vite dev server proxy plugin in vite.config.ts */
 interface TradeApiProxyEnvelope {
   hooklensProxy: true
   ok: boolean
@@ -208,50 +125,31 @@ function isProxyEnvelope(value: unknown): value is TradeApiProxyEnvelope {
   )
 }
 
-// ─── Core fetch ───────────────────────────────────────────────────────────────
-
-/**
- * POST to a Trading API endpoint and return the parsed JSON body.
- *
- * Headers per official API docs:
- *   - x-api-key: your API key
- *   - x-universal-router-version: "2.0" — must be consistent across /quote and /swap
- *   - x-erc20eth-enabled: enable native ETH input on UniswapX (EIP-7914)
- *   - x-permit2-disabled: false = use standard Permit2 message flow
- */
 async function uniswapFetch<T>(endpoint: string, payload: unknown): Promise<T> {
   const apiKey = getApiKey()
-  if (!apiKey) {
-    throw new Error(
-      'Uniswap API key not configured. Add VITE_UNISWAP_API_KEY to your .env file.',
-    )
-  }
-
   const url = `${getApiBase()}${endpoint}`
   debugLog('request', { endpoint, url, payload })
 
-  // Per API docs: enable EIP-7914 native ETH input for UniswapX only when tokenIn is zero address
   const hasNativeInput =
     payload != null &&
     typeof payload === 'object' &&
     (payload as { tokenIn?: string }).tokenIn === '0x0000000000000000000000000000000000000000'
   const erc20EthEnabled = hasNativeInput ? 'true' : 'false'
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    'x-universal-router-version': '2.0',
+    'x-erc20eth-enabled': erc20EthEnabled,
+    'x-permit2-disabled': 'false',
+  }
+
+  if (apiKey) headers['x-api-key'] = apiKey
 
   let res: Response
   try {
     res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'x-api-key': apiKey,
-        // Router version MUST be consistent across /quote and /swap calls (per API docs)
-        'x-universal-router-version': '2.0',
-        // Enable native ETH input for UniswapX when tokenIn is the native currency address
-        'x-erc20eth-enabled': erc20EthEnabled,
-        // Use Permit2 message flow (not as a transaction — requires no onchain submission)
-        'x-permit2-disabled': 'false',
-      },
+      headers,
       body: JSON.stringify(payload),
     })
   } catch (err) {
@@ -266,7 +164,6 @@ async function uniswapFetch<T>(endpoint: string, payload: unknown): Promise<T> {
 
   const body = await readBody(res)
 
-  // The Vite dev server proxy wraps upstream responses in a TradeApiProxyEnvelope
   if (isProxyEnvelope(body)) {
     debugLog('proxy upstream', { endpoint, ok: body.ok, status: body.status })
     if (!body.ok) throwApiError(endpoint, body.status, body.body)
@@ -279,8 +176,6 @@ async function uniswapFetch<T>(endpoint: string, payload: unknown): Promise<T> {
   debugLog('success', { endpoint, body })
   return body as T
 }
-
-// ─── Response helpers ─────────────────────────────────────────────────────────
 
 async function readBody(res: Response): Promise<unknown> {
   const text = await res.text()
@@ -317,7 +212,7 @@ function throwApiError(endpoint: string, status: number, body: unknown): never {
 
   if (status === 401) {
     throw new Error(
-      'Invalid Uniswap API key. Check VITE_UNISWAP_API_KEY in your .env file and restart the dev server.',
+      'Invalid Uniswap API key. Set UNISWAP_API_KEY on the proxy server, then restart the dev server.',
     )
   }
   if (status === 429) {
@@ -343,22 +238,6 @@ function safeStringify(value: unknown): string {
   }
 }
 
-// ─── Amount conversion utilities ──────────────────────────────────────────────
-
-/**
- * Convert a human-readable token amount to base units using the SDK currency's decimals.
- * Example: toWei("1.5", USDC_BASE) → "1500000" (1.5 USDC = 6 decimals)
- *
- * Decimals come from the Currency object directly — no separate lookup or hardcoding.
- */
-export function toWeiFromCurrency(amount: string, currency: Currency): string {
-  return toWei(amount, currency.decimals)
-}
-
-/**
- * Convert a human-readable amount string to base units using an explicit decimal count.
- * Handles fractional amounts with full precision up to `decimals` digits.
- */
 export function toWei(amount: string, decimals: number): string {
   const normalized = amount.trim().replace(/,/g, '')
   if (!/^\d+(\.\d+)?$/.test(normalized)) {
@@ -377,10 +256,6 @@ export function toWei(amount: string, decimals: number): string {
   return wei.toString()
 }
 
-/**
- * Format a signed base-unit amount back to a human-readable string with sign prefix.
- * Example: formatSignedWei("-500000", 6, 2) → "-0.50"
- */
 export function formatSignedWei(amountWei: string, decimals: number, displayDecimals = 4): string {
   try {
     const isNegative = amountWei.startsWith('-')
@@ -392,17 +267,6 @@ export function formatSignedWei(amountWei: string, decimals: number, displayDeci
   }
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
-
-/**
- * Fetch a single quote from the Uniswap Trading API.
- *
- * Per API docs:
- *   - amount: token base units string (e.g. "1000000" for 1 USDC)
- *   - tokenIn / tokenOut: ERC-20 address; 0x0000...0000 = native ETH
- *   - Must include either slippageTolerance OR autoSlippage — not both
- *   - When protocols includes "V4", hooksOptions filters hook pool routing
- */
 export async function getQuote(request: QuoteRequest): Promise<QuoteResponse> {
   if (!request.tokenIn || !request.tokenOut) {
     throw new Error('tokenIn and tokenOut are required for a quote.')
@@ -430,17 +294,6 @@ export async function getQuote(request: QuoteRequest): Promise<QuoteResponse> {
   return uniswapFetch<QuoteResponse>('/quote', request)
 }
 
-/**
- * Fetch dual parallel quotes for the same Currency pair using SDK-native types:
- *   1. Hook quote:   V4 protocol, hooks-only pools (V4_HOOKS_ONLY)
- *   2. Market quote: Best available route across all protocols (BEST_PRICE)
- *
- * Uses currencyToApiAddress() to correctly resolve native ETH → 0x000...000.
- * Uses currency.decimals for amount conversion — no hardcoded decimal lookup.
- *
- * If the hook quote fails because no hook pool exists, noHookPool is true.
- * The impactAmount and impactPercent compare hook vs market output amounts.
- */
 export async function getDualQuote(
   currencyIn: Currency,
   currencyOut: Currency,
@@ -448,11 +301,8 @@ export async function getDualQuote(
   chainId: number,
   swapper: string,
 ): Promise<HookQuoteComparison> {
-  // Use SDK-native address resolution — toAddress() handles isNative correctly
   const tokenInAddr = currencyToApiAddress(currencyIn)
   const tokenOutAddr = currencyToApiAddress(currencyOut)
-
-  // Use currency.decimals from the SDK Token — never hardcode
   const amountWei = toWei(amountHuman, currencyIn.decimals)
 
   const effectiveChainId =
@@ -463,8 +313,6 @@ export async function getDualQuote(
 
   const swapperAddr = swapper || DUMMY_SWAPPER
 
-  // Base request shared between both quote variants
-  // autoSlippage: "DEFAULT" — calculated automatically for Uniswap Protocol routes (v2/v3/v4)
   const baseRequest: QuoteRequest = {
     type: 'EXACT_INPUT',
     amount: amountWei,
@@ -494,8 +342,6 @@ export async function getDualQuote(
   let hookError: QuoteError | null = null
   let baseError: QuoteError | null = null
 
-  // Hook quote: V4 protocol only, hooks-only pools
-  // hooksOptions: "V4_HOOKS_ONLY" — only quote routes through v4 pools that have hooks
   try {
     hookQuote = await getQuote({
       ...baseRequest,
@@ -512,10 +358,8 @@ export async function getDualQuote(
     debugLog('hook quote failed', hookError)
   }
 
-  // Brief pause between requests to stay within the 3 req/s rate limit
   await sleep(350)
 
-  // Market quote: best route across all protocols (no hook filter)
   try {
     baseQuote = await getQuote(baseRequest)
     debugLog('market quote success', {
@@ -528,7 +372,6 @@ export async function getDualQuote(
     debugLog('market quote failed', baseError)
   }
 
-  // Detect "no hook pool" — distinguishable from a general API failure
   const hookErrText = hookError?.message.toLowerCase() ?? ''
   const noHookPool =
     hookError != null &&
@@ -537,7 +380,6 @@ export async function getDualQuote(
       hookErrText.includes('insufficient liquidity') ||
       hookErrText.includes('no route found'))
 
-  // Calculate output delta using currency.decimals from SDK
   let impactAmount = '0'
   let impactPercent = 0
   let isPositive = false
@@ -547,7 +389,6 @@ export async function getDualQuote(
     const baseOut = BigInt(baseQuote.quote.output.amount || '0')
     const diff = hookOut - baseOut
 
-    // Format with the output currency's decimals — from the SDK
     impactAmount = formatSignedWei(diff.toString(), currencyOut.decimals, currencyOut.decimals <= 6 ? 2 : 4)
 
     if (baseOut > BigInt(0)) {
@@ -573,15 +414,7 @@ export async function getDualQuote(
   return result
 }
 
-// ─── Well-known swapper placeholder ──────────────────────────────────────────
-
-/**
- * A well-known Ethereum address used as a placeholder swapper when the user
- * has not connected a wallet. vitalik.eth — safe for read-only quotes.
- */
 export const DUMMY_SWAPPER = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'
-
-// ─── Internal helpers ─────────────────────────────────────────────────────────
 
 function toQuoteError(code: string, err: unknown): QuoteError {
   const rawMessage = err instanceof Error ? err.message : String(err)
@@ -594,11 +427,6 @@ function sleep(ms: number): Promise<void> {
 }
 
 function debugLog(label: string, payload: unknown): void {
-  if (
-    import.meta.env.DEV !== true &&
-    import.meta.env.VITE_HOOKLENS_DEBUG_QUOTES !== 'true'
-  ) {
-    return
-  }
+  if (import.meta.env.VITE_HOOKLENS_DEBUG_QUOTES !== 'true') return
   console.info(`[HookLens quote] ${label}`, payload)
 }

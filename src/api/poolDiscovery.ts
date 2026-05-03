@@ -10,7 +10,6 @@ const INITIALIZE_EVENT = parseAbiItem(
 )
 const NATIVE_CURRENCY = '0x0000000000000000000000000000000000000000'
 
-// Unix timestamp helpers for 7d / 30d windows
 function daysAgoTimestamp(days: number): number {
   return Math.floor(Date.now() / 1000) - days * 86400
 }
@@ -161,7 +160,6 @@ function mapSubgraphPool(p: Record<string, unknown>, chainId: number): HookPool 
   const t0 = p.token0 as Record<string, unknown> | undefined
   const t1 = p.token1 as Record<string, unknown> | undefined
 
-  // Aggregate 7d and 30d poolDayData
   const dayData7d = (p.poolDayData7d as Array<Record<string, unknown>> | undefined) ?? []
   const dayData30d = (p.poolDayData30d as Array<Record<string, unknown>> | undefined) ?? []
 
@@ -346,12 +344,7 @@ function getGraphEndpoint(subgraphId: string): string {
 }
 
 function debugSubgraph(label: string, payload: unknown): void {
-  if (
-    import.meta.env.DEV !== true &&
-    import.meta.env.VITE_HOOKLENS_DEBUG_SUBGRAPH !== 'true'
-  ) {
-    return
-  }
+  if (import.meta.env.VITE_HOOKLENS_DEBUG_SUBGRAPH !== 'true') return
   console.info(`[HookLens subgraph] ${label}`, payload)
 }
 
@@ -383,29 +376,30 @@ export async function discoverPools(
       source: 'subgraph',
       fetchedAt: Date.now(),
     }
-  } catch {
-    // subgraph unavailable — fall through to onchain fallback
+  } catch (subgraphError) {
+    try {
+      const pools = await fetchPoolsOnchain(checksummed, chainId)
+      return {
+        pools,
+        totalFound: pools.length,
+        source: 'onchain',
+        fetchedAt: Date.now(),
+      }
+    } catch (onchainErr) {
+      return {
+        pools: [],
+        totalFound: 0,
+        source: 'none',
+        error:
+          `Both subgraph and onchain lookup failed. Subgraph: ${formatError(subgraphError)}. Onchain: ${formatError(onchainErr)}`,
+        fetchedAt: Date.now(),
+      }
+    }
   }
+}
 
-  try {
-    const pools = await fetchPoolsOnchain(checksummed, chainId)
-    return {
-      pools,
-      totalFound: pools.length,
-      source: 'onchain',
-      fetchedAt: Date.now(),
-    }
-  } catch (onchainErr) {
-    return {
-      pools: [],
-      totalFound: 0,
-      source: 'none',
-      error:
-        'Both subgraph and onchain lookup failed: ' +
-        (onchainErr instanceof Error ? onchainErr.message : 'unknown'),
-      fetchedAt: Date.now(),
-    }
-  }
+function formatError(err: unknown): string {
+  return err instanceof Error ? err.message : 'unknown'
 }
 
 export async function comparePoolMarket(

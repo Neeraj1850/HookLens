@@ -3,7 +3,6 @@ import { discoverAllHookAddresses } from '../api/hookDiscovery'
 import { UNISWAP_V4_SUBGRAPH_IDS_BY_CHAIN } from '../config/constants'
 import type { HookAddressDiscovery } from '../types/hook'
 
-/** Chain IDs that have a configured subgraph — used to drive the chain selector */
 export const CONFIGURED_CHAIN_IDS = Object.keys(UNISWAP_V4_SUBGRAPH_IDS_BY_CHAIN).map(Number)
 
 export function useHookAddressDiscovery(selectedChainIds?: number[]) {

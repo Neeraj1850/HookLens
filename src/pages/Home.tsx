@@ -32,7 +32,6 @@ export function Home() {
     <Layout>
       <div className="min-h-[calc(100vh-56px)] flex flex-col">
 
-        {/* Hero */}
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-20 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-zinc-800 rounded-full mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -51,7 +50,6 @@ export function Home() {
 
           <AddressInput />
 
-          {/* Feature pills */}
           <div className="flex items-center gap-2 mt-8 flex-wrap justify-center">
             {[
               '14 callback flags',
@@ -69,7 +67,6 @@ export function Home() {
           </div>
         </div>
 
-        {/* How it works */}
         <div className="border-t border-border px-6 py-8">
           <div className="max-w-2xl mx-auto">
             <p className="text-[10px] text-zinc-700 uppercase tracking-widest mb-5">
@@ -99,7 +96,6 @@ export function Home() {
           </div>
         </div>
 
-        {/* Example hooks */}
         <div className="border-t border-border px-6 py-5">
           <div className="max-w-2xl mx-auto">
             <p className="text-[10px] text-zinc-700 uppercase tracking-widest mb-3">
@@ -130,7 +126,6 @@ export function Home() {
           </div>
         </div>
 
-        {/* Recent */}
         {history.length > 0 && (
           <div className="border-t border-border px-6 py-5">
             <div className="max-w-2xl mx-auto">

@@ -3,7 +3,7 @@ import { useHookStore } from '../../store/hookStore'
 import { copyToClipboard, exportInspectionJSON, generateShareUrl } from '../../utils/export'
 
 export function ShareBar() {
-  const { currentInspection, poolDiscovery, quoteComparison } = useHookStore()
+  const { currentInspection, poolDiscovery } = useHookStore()
   const [copied, setCopied] = useState(false)
 
   if (!currentInspection) return null
@@ -20,7 +20,7 @@ export function ShareBar() {
   }
 
   const handleExport = () => {
-    exportInspectionJSON(currentInspection, poolDiscovery, quoteComparison)
+    exportInspectionJSON(currentInspection, poolDiscovery)
   }
 
   return (

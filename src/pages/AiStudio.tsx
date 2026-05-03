@@ -46,7 +46,6 @@ function TokenSelect({
   onChange: (t: Currency) => void
   tokens: Currency[]
 }) {
-  // Use the API address as the unique key (0x000...000 for native ETH)
   const valueAddr = currencyToApiAddress(value)
   return (
     <select
@@ -131,7 +130,6 @@ export function AiStudio() {
   const { address: walletAddress } = useAccount()
   const { simTokenIn, simTokenOut, simChainId, currentAddress, currentInspection } = useHookStore()
 
-  // Local state
   const [chainId, setChainId] = useState<number>(simChainId || 8453)
   const [amount, setAmount] = useState('1')
   const [steps, setSteps] = useState<AgentStep[]>([])
@@ -139,14 +137,11 @@ export function AiStudio() {
   const [isRunning, setIsRunning] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
 
-  // getTokensForChain returns SDK Currency[] — WETH9 and Ether from the SDK constants
   const chainCurrencies = getTokensForChain(chainId)
 
-  // Bridge store-sourced TokenDef (from pool selection) to SDK Currency
   const storeIn  = simTokenIn  ? tokenDefToCurrency(simTokenIn)  : null
   const storeOut = simTokenOut ? tokenDefToCurrency(simTokenOut) : null
 
-  // Merge: chain defaults + any store-loaded currencies, deduplicated by address
   const allCurrencies: Currency[] = [...chainCurrencies]
   if (storeIn  && !chainCurrencies.some((c) => currencyToApiAddress(c) === currencyToApiAddress(storeIn))) {
     allCurrencies.push(storeIn)
@@ -186,7 +181,6 @@ export function AiStudio() {
     setSteps([])
 
     try {
-      // Pass SDK Currency objects directly — getDualQuote uses currency.decimals
       const result = await runAgentPipeline(
         tokenIn,
         tokenOut,
@@ -211,7 +205,6 @@ export function AiStudio() {
     <Layout>
       <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col gap-6">
 
-        {/* Header */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <span className="text-yellow-400/80 text-lg">✦</span>
@@ -228,7 +221,6 @@ export function AiStudio() {
           </p>
         </div>
 
-        {/* Skill legend */}
         <div className="flex flex-wrap gap-3 text-[10px] font-mono border border-zinc-900 rounded-xl px-4 py-3 bg-zinc-950/40">
           <span className="text-zinc-700 uppercase tracking-wider mr-1">Skills used:</span>
           {Object.entries(SKILL_COLORS).map(([skill, color]) => (
@@ -238,13 +230,10 @@ export function AiStudio() {
 
         <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6">
 
-          {/* Left: Config + Steps */}
           <div className="flex flex-col gap-4">
 
-            {/* Config card */}
             <div className="border border-zinc-800 rounded-2xl p-5 flex flex-col gap-5 bg-[#0a0a0a]">
 
-              {/* Chain selector */}
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Chain</span>
                 <div className="flex flex-wrap gap-1.5">
@@ -264,7 +253,6 @@ export function AiStudio() {
                 </div>
               </div>
 
-              {/* Token pair */}
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Token Pair</span>
                 <div className="flex items-center gap-2">
@@ -292,7 +280,6 @@ export function AiStudio() {
                 </div>
               </div>
 
-              {/* Amount */}
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Amount ({tokenIn?.symbol})</span>
                 <input
@@ -306,7 +293,6 @@ export function AiStudio() {
                 />
               </div>
 
-              {/* Hook context */}
               {hookAddress && (
                 <div className="flex items-center gap-3 border border-zinc-900 rounded-xl px-4 py-3 bg-zinc-950/40">
                   <div className="flex flex-col gap-0.5 flex-1 min-w-0">
@@ -331,7 +317,6 @@ export function AiStudio() {
                 </div>
               )}
 
-              {/* Run button */}
               <button
                 id="swap-simulator-run-btn"
                 onClick={handleRun}
@@ -356,13 +341,12 @@ export function AiStudio() {
                   <p className="text-xs font-medium text-red-400">Pipeline Error</p>
                   <p className="text-xs text-zinc-500 leading-relaxed">{runError}</p>
                   {runError.toLowerCase().includes('api key') && (
-                    <p className="text-[10px] text-zinc-700 mt-0.5">Add VITE_UNISWAP_API_KEY to your .env and restart the dev server.</p>
+                    <p className="text-[10px] text-zinc-700 mt-0.5">Add UNISWAP_API_KEY to your .env and restart the dev server.</p>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Pipeline steps */}
             {steps.length > 0 && (
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] text-zinc-600 uppercase tracking-widest px-1">Pipeline Execution</span>
@@ -373,7 +357,6 @@ export function AiStudio() {
             )}
           </div>
 
-          {/* Right: Report */}
           <div className="flex flex-col gap-4">
 
             {!report && !isRunning && (
@@ -393,7 +376,6 @@ export function AiStudio() {
             {report && decisionCfg && (
               <div className="flex flex-col gap-4 animate-fade-in">
 
-                {/* Decision card */}
                 <div className={`border rounded-2xl p-5 flex flex-col gap-3 ${decisionCfg.bg}`}>
                   <div className="flex items-center gap-3">
                     <span className={`text-2xl ${decisionCfg.color}`}>{decisionCfg.icon}</span>
@@ -407,7 +389,6 @@ export function AiStudio() {
                     </div>
                   </div>
 
-                  {/* Impact */}
                   {report.comparison?.hookQuote && report.comparison?.baseQuote && (
                     <div className="border-t border-white/5 pt-3 grid grid-cols-3 gap-3">
                       {[
@@ -424,7 +405,6 @@ export function AiStudio() {
                   )}
                 </div>
 
-                {/* Route scores */}
                 {(report.hookScore || report.baseScore) && (
                   <div className="border border-zinc-800 rounded-2xl p-5 flex flex-col gap-4 bg-[#0a0a0a]">
                     <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Route Scores</span>
@@ -437,7 +417,6 @@ export function AiStudio() {
                   </div>
                 )}
 
-                {/* Rationale */}
                 {report.rationale.length > 0 && (
                   <div className="border border-zinc-900 rounded-2xl p-5 flex flex-col gap-3 bg-[#0a0a0a]">
                     <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Agent Rationale</span>
@@ -452,7 +431,6 @@ export function AiStudio() {
                   </div>
                 )}
 
-                {/* Warnings */}
                 {report.warnings.length > 0 && (
                   <div className="border border-amber-900/40 rounded-2xl p-5 flex flex-col gap-3 bg-amber-950/10">
                     <span className="text-[10px] text-amber-600 uppercase tracking-widest">⚠ Warnings</span>
@@ -467,7 +445,6 @@ export function AiStudio() {
                   </div>
                 )}
 
-                {/* Raw quote details */}
                 {report.comparison && (
                   <details className="border border-zinc-900 rounded-2xl overflow-hidden">
                     <summary className="px-5 py-3 text-[10px] text-zinc-600 uppercase tracking-widest cursor-pointer hover:text-zinc-400 transition-colors">
@@ -517,7 +494,6 @@ export function AiStudio() {
                   </details>
                 )}
 
-                {/* Dev Tool Comparison */}
                 <div className="border border-zinc-900 rounded-2xl p-5 flex flex-col gap-4 bg-[#0a0a0a]">
                   <span className="text-[10px] text-zinc-600 uppercase tracking-widest">HookLens vs Other Tools</span>
                   <div className="overflow-x-auto">
@@ -557,7 +533,6 @@ export function AiStudio() {
                   </div>
                 </div>
 
-                {/* Local Auditor chat interface */}
                 <AssistantChat report={report} hookAddress={hookAddress} safety={currentInspection?.safety} />
 
               </div>
