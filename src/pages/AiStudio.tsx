@@ -129,7 +129,7 @@ function ScoreBar({ label, score, color }: { label: string; score: number; color
 export function AiStudio() {
   const navigate = useNavigate()
   const { address: walletAddress } = useAccount()
-  const { simTokenIn, simTokenOut, simChainId, currentAddress } = useHookStore()
+  const { simTokenIn, simTokenOut, simChainId, currentAddress, currentInspection } = useHookStore()
 
   // Local state
   const [chainId, setChainId] = useState<number>(simChainId || 8453)
@@ -559,7 +559,7 @@ export function AiStudio() {
                 </div>
 
                 {/* Local AI plain-English explanation */}
-                <LocalAIExplainer report={report} hookAddress={hookAddress} />
+                <LocalAIExplainer report={report} hookAddress={hookAddress} safety={currentInspection?.safety} />
 
               </div>
             )}

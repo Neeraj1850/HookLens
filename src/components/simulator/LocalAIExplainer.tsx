@@ -7,9 +7,12 @@ import {
   OllamaNoModelError,
 } from '../../api/localAI'
 
+import type { SafetyAnalysis } from '../../types/hook'
+
 interface Props {
   report: AgentReport
   hookAddress: string | null
+  safety?: SafetyAnalysis | null
 }
 
 type UIState =
@@ -20,7 +23,7 @@ type UIState =
   | { phase: 'done'; model: string; text: string }
   | { phase: 'error'; message: string }
 
-export function LocalAIExplainer({ report, hookAddress }: Props) {
+export function LocalAIExplainer({ report, hookAddress, safety }: Props) {
   const [state, setState] = useState<UIState>({ phase: 'idle' })
 
   // Reset when report changes (new simulation run)
@@ -44,7 +47,7 @@ export function LocalAIExplainer({ report, hookAddress }: Props) {
 
     try {
       let model = '…'
-      const result = await explainReport(report, hookAddress, (chunk) => {
+      const result = await explainReport(report, hookAddress, safety || null, (chunk) => {
         setState((prev) =>
           prev.phase === 'generating'
             ? { ...prev, partial: prev.partial + chunk, model }
@@ -71,7 +74,7 @@ export function LocalAIExplainer({ report, hookAddress }: Props) {
         })
       }
     }
-  }, [report, hookAddress])
+  }, [report, hookAddress, safety])
 
   // ── Idle ────────────────────────────────────────────────────────────────────
   if (state.phase === 'idle') {

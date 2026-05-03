@@ -13,6 +13,7 @@
  */
 
 import type { AgentReport } from './agentEngine'
+import type { SafetyAnalysis } from '../types/hook'
 
 // ─── Error types ──────────────────────────────────────────────────────────────
 
@@ -57,40 +58,62 @@ interface OllamaGenerateChunk {
 
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
-function buildPrompt(report: AgentReport, hookAddress: string | null): string {
+function buildPrompt(report: AgentReport, hookAddress: string | null, safety: SafetyAnalysis | null): string {
   const decision = report.decision
   const confidence = report.confidence
-  const hookScore = report.hookScore?.score?.toFixed(1) ?? 'N/A'
-  const marketScore = report.baseScore?.score?.toFixed(1) ?? 'N/A'
+  
+  // Extract detailed routing info
+  const hookOutput = report.hookScore ? `${report.hookScore.outputAmount.toPrecision(5)}` : 'N/A'
+  const hookGas = report.hookScore ? `$${report.hookScore.gasFeeUSD.toFixed(2)}` : 'N/A'
+  const hookRouting = report.hookScore?.routingType ?? 'N/A'
+  
+  const marketOutput = report.baseScore ? `${report.baseScore.outputAmount.toPrecision(5)}` : 'N/A'
+  const marketGas = report.baseScore ? `$${report.baseScore.gasFeeUSD.toFixed(2)}` : 'N/A'
+  const marketRouting = report.baseScore?.routingType ?? 'N/A'
+  
   const impactPct = `${report.impactPercent > 0 ? '+' : ''}${report.impactPercent.toFixed(3)}%`
   const impactAmt = report.impactAmount
   const riskLines = report.warnings.join('\n')
   const rationaleLines = report.rationale.join('\n')
 
-  return `You are a DeFi swap advisor explaining results to a non-technical user. Be concise, friendly, and avoid jargon. Use plain English. Do not use bullet points — write 2 to 3 short paragraphs only.
+  // Extract sourcify verified code if available
+  let sourceCodeContext = 'Sourcify Source Code: Not available or unverified.'
+  if (safety?.source.verification.isVerified && safety.source.sources) {
+    // Try to find a file containing 'Hook' or just take the first file's content
+    const files = Object.entries(safety.source.sources)
+    const hookFile = files.find(([name]) => name.toLowerCase().includes('hook')) || files[0]
+    if (hookFile) {
+      // Truncate to ~1500 chars to avoid blowing up local model context window
+      const code = hookFile[1].content.slice(0, 1500)
+      sourceCodeContext = `Verified Source Code Snippet (${hookFile[0]}):\n\`\`\`solidity\n${code}...\n\`\`\``
+    }
+  }
 
-Here is the result of a Uniswap v4 swap simulation:
+  return `You are a DeFi technical auditor explaining Uniswap v4 swap simulation results to a developer. Use technical language. Explain exactly what the output is, evaluate the routes used, and analyze the verified source code if provided to explain what went right or wrong with this hook.
 
-DECISION: ${decision}
-CONFIDENCE: ${confidence}%
-HOOK ROUTE SCORE: ${hookScore}/100
-MARKET ROUTE SCORE: ${marketScore}/100
-PRICE IMPACT VS MARKET: ${impactPct} (${impactAmt})
-IS HOOK BETTER: ${report.isPositive ? 'Yes' : 'No'}
+SWAP SIMULATION DATA:
+DECISION: ${decision} (Confidence: ${confidence}%)
 HOOK ADDRESS: ${hookAddress ?? 'Not specified'}
+PRICE IMPACT VS MARKET: ${impactPct} (${impactAmt})
 
-TECHNICAL RATIONALE:
+ROUTES EVALUATED:
+1. Hook Route (V4_HOOKS_ONLY): Output: ${hookOutput} | Gas: ${hookGas} | Routing Type: ${hookRouting}
+2. Market Route (BEST_PRICE): Output: ${marketOutput} | Gas: ${marketGas} | Routing Type: ${marketRouting}
+
+AGENT RATIONALE:
 ${rationaleLines}
 
-WARNINGS:
+AGENT WARNINGS:
 ${riskLines || 'None'}
 
-In simple language, explain:
-1. What these scores mean for someone who wants to swap tokens
-2. Whether the hook route is good or bad for this swap and why
-3. What the user should do next
+${sourceCodeContext}
 
-Do not mention "V4_HOOKS_ONLY", "BEST_PRICE", or internal API terms. Keep it under 120 words.`
+Please explain in detail:
+1. The exact routes used and the output differences (gas, output amount, routing type).
+2. Based on the verified source code snippet (if provided) and the rationale, explain technically what went wrong or good with this hook for this specific swap intent.
+3. Conclude with a clear technical recommendation.
+
+Keep the response structured, highly technical, and concise (under 250 words).`
 }
 
 // ─── Model detection via REST ─────────────────────────────────────────────────
@@ -138,10 +161,11 @@ export interface ExplainResult {
 export async function explainReport(
   report: AgentReport,
   hookAddress: string | null,
+  safety: SafetyAnalysis | null,
   onChunk: (chunk: string) => void,
 ): Promise<ExplainResult> {
   const model = await detectModel()
-  const prompt = buildPrompt(report, hookAddress)
+  const prompt = buildPrompt(report, hookAddress, safety)
 
   let res: Response
   try {
