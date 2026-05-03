@@ -9,7 +9,7 @@ import { runAgentPipeline, classifyHookRisk } from '../api/agentEngine'
 import { useHookStore } from '../store/hookStore'
 import type { AgentStep, AgentReport, AgentDecision } from '../api/agentEngine'
 import { tokenDefToCurrency } from '../utils/token'
-import { LocalAIExplainer } from '../components/simulator/LocalAIExplainer'
+import { AssistantChat } from '../components/simulator/AssistantChat'
 
 const QUOTABLE_CHAINS = SUPPORTED_CHAINS.filter((c) => [8453, 1, 42161].includes(c.id))
 
@@ -215,17 +215,16 @@ export function AiStudio() {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <span className="text-yellow-400/80 text-lg">✦</span>
-            <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Uniswap Trading API · Agentic Pipeline</span>
+            <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Uniswap Trading API · Simulation Pipeline</span>
           </div>
           <h1 className="text-2xl font-semibold text-white tracking-tight">
             Swap Simulator
           </h1>
           <p className="text-xs text-zinc-500 max-w-2xl leading-relaxed">
-            A 6-step agentic pipeline that fetches dual quotes from the Uniswap Trading API
+            A robust 6-step pipeline that fetches dual quotes from the Uniswap Trading API
             (<span className="font-mono text-zinc-400">V4_HOOKS_ONLY</span> vs{' '}
             <span className="font-mono text-zinc-400">BEST_PRICE</span>), scores both routes,
-            classifies hook risk using the <span className="font-mono text-zinc-400">v4-security-foundations</span> skill,
-            and makes a deterministic routing recommendation.
+            runs security analysis on the hook, and makes a deterministic routing recommendation.
           </p>
         </div>
 
@@ -237,7 +236,7 @@ export function AiStudio() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6">
 
           {/* Left: Config + Steps */}
           <div className="flex flex-col gap-4">
@@ -342,12 +341,12 @@ export function AiStudio() {
                 {isRunning ? (
                   <>
                     <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                    Agent Running…
+                    Simulation Running…
                   </>
                 ) : (
                   <>
                     <span className="text-base">✦</span>
-                    Run Agentic Analysis
+                    Run Swap Simulation
                   </>
                 )}
               </button>
@@ -536,11 +535,11 @@ export function AiStudio() {
                           ['Hook flag decoder',       true, false, false, true ],
                           ['v4 subgraph discovery',   true, false, true,  false],
                           ['Live dual-quote API',      true, false, false, false],
-                          ['Agentic routing decision', true, false, false, false],
+                          ['Smart routing decision',  true, false, false, false],
                           ['v4-security-foundations', true, false, false, true ],
                           ['Source safety analysis',  true, true,  false, true ],
                           ['Pool market comparison',  true, false, true,  false],
-                          ['Uniswap AI skills',       true, false, false, false],
+                          ['Security analysis skills',true, false, false, false],
                         ].map(([feature, ...vals]) => (
                           <tr key={String(feature)}>
                             <td className="text-zinc-500 py-2 pr-3">{feature}</td>
@@ -558,8 +557,8 @@ export function AiStudio() {
                   </div>
                 </div>
 
-                {/* Local AI plain-English explanation */}
-                <LocalAIExplainer report={report} hookAddress={hookAddress} safety={currentInspection?.safety} />
+                {/* Local Auditor chat interface */}
+                <AssistantChat report={report} hookAddress={hookAddress} safety={currentInspection?.safety} />
 
               </div>
             )}

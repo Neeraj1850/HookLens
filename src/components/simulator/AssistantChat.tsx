@@ -7,7 +7,7 @@ import {
   OllamaUnavailableError,
   OllamaNoModelError,
   type ChatMessage,
-} from '../../api/localAI'
+} from '../../api/assistant'
 
 import type { SafetyAnalysis } from '../../types/hook'
 
@@ -19,7 +19,7 @@ interface Props {
 
 type ChatPhase = 'idle' | 'checking' | 'unavailable' | 'chatting' | 'error'
 
-export function LocalAIExplainer({ report, hookAddress, safety }: Props) {
+export function AssistantChat({ report, hookAddress, safety }: Props) {
   const [phase, setPhase] = useState<ChatPhase>('idle')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -142,13 +142,13 @@ export function LocalAIExplainer({ report, hookAddress, safety }: Props) {
         <div className="flex items-center justify-between gap-4 relative z-10">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-zinc-300 tracking-wide">Local AI Assistant</span>
+              <span className="text-xs font-semibold text-zinc-300 tracking-wide">Audit Assistant</span>
               <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400">
                 Privacy First
               </span>
             </div>
             <p className="text-xs text-zinc-500 leading-relaxed max-w-[280px]">
-              Chat with a local LLM to dive deep into this swap simulation. 100% private, no API keys.
+              Chat with a local auditor model to dive deep into this swap simulation.
             </p>
           </div>
           <button
@@ -178,14 +178,14 @@ export function LocalAIExplainer({ report, hookAddress, safety }: Props) {
     return (
       <div className="border border-zinc-800 rounded-2xl p-6 flex flex-col gap-4 bg-[#0a0a0a]">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-zinc-300 tracking-wide">Local AI</span>
+          <span className="text-xs font-semibold text-zinc-300 tracking-wide">Audit Assistant</span>
           <span className="text-[9px] px-2 py-0.5 rounded-full border border-red-900/50 bg-red-900/10 text-red-400 font-mono">
             {phase === 'error' ? 'error' : 'offline'}
           </span>
         </div>
         <p className="text-xs text-zinc-500 leading-relaxed">
           {phase === 'unavailable' 
-            ? 'Ollama is not responding. To enable local AI analysis:' 
+            ? 'Ollama is not responding. To enable the local auditor:' 
             : 'Something went wrong during generation:'}
         </p>
         <code className="text-[10px] font-mono text-zinc-400 bg-zinc-950 border border-zinc-900 rounded-lg px-4 py-3 leading-relaxed block overflow-x-auto whitespace-pre-wrap">
@@ -206,7 +206,7 @@ export function LocalAIExplainer({ report, hookAddress, safety }: Props) {
   const displayMsgs = messages.filter((m) => m.role !== 'system')
 
   return (
-    <div className="border border-zinc-800 rounded-2xl flex flex-col bg-[#0a0a0a] shadow-xl overflow-hidden h-[450px]">
+    <div className="border border-zinc-800 rounded-2xl flex flex-col bg-[#0a0a0a] shadow-xl overflow-hidden h-[600px]">
       {/* Header */}
       <div className="px-5 py-3 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/30">
         <div className="flex items-center gap-2.5">
@@ -214,7 +214,7 @@ export function LocalAIExplainer({ report, hookAddress, safety }: Props) {
             {isGenerating && <span className="absolute inset-0 rounded-full bg-violet-500/20 animate-ping" />}
             <span className="w-2 h-2 rounded-full bg-violet-400 relative z-10 shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
           </div>
-          <span className="text-xs font-semibold text-zinc-300">Auditor AI</span>
+          <span className="text-xs font-semibold text-zinc-300">Auditor</span>
           <span className="text-[9px] font-mono text-zinc-500 border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 rounded ml-1">
             {modelName}
           </span>
