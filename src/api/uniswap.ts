@@ -17,7 +17,6 @@
 import { ChainId, Ether, Token, WETH9, type Currency } from '@uniswap/sdk-core'
 import { toAddress } from '@uniswap/v4-sdk'
 import {
-  UNISWAP_API_BASE,
   type HookQuoteComparison,
   type QuoteError,
   type QuoteRequest,
