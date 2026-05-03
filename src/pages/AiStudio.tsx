@@ -9,6 +9,7 @@ import { runAgentPipeline, classifyHookRisk } from '../api/agentEngine'
 import { useHookStore } from '../store/hookStore'
 import type { AgentStep, AgentReport, AgentDecision } from '../api/agentEngine'
 import { tokenDefToCurrency } from '../utils/token'
+import { LocalAIExplainer } from '../components/simulator/LocalAIExplainer'
 
 const QUOTABLE_CHAINS = SUPPORTED_CHAINS.filter((c) => [8453, 1, 42161].includes(c.id))
 
@@ -556,6 +557,10 @@ export function AiStudio() {
                     </table>
                   </div>
                 </div>
+
+                {/* Local AI plain-English explanation */}
+                <LocalAIExplainer report={report} hookAddress={hookAddress} />
+
               </div>
             )}
           </div>
